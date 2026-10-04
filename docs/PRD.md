@@ -148,8 +148,8 @@ MVP is successful when a student can register, set a graduation goal, select a c
 | Role | Name | Date | Signature |
 |---|---|---|---|
 | Founder | Onofua Precious | 28/09/2026 | Signed |
-| Project Manager | Gloria Aigbotsua, Chigozie Kamah, Daniel Obadofin, Toyin Orowole, Emmanuel Abbah | 22/09/2026 | Gloria A, Chigozie K, Daniel O, Toyin O, Emmanuel A |
-| Development Team | Group H: Daniel Obadofin, Gloria Aigbotsua, Emmanuel Abbah, Oluwatoyin Orowole, Chigozie Kamah | | |
+| Project Manager | Group H: Gloria Aigbotsua, Chigozie Kamah, Daniel Obadofin, Toyin Orowole, Emmanuel Abbah | 22/09/2026 | Gloria A, Chigozie K, Daniel O, Toyin O, Emmanuel A |
+| Development Team | Zoe Abigail, Ibrahim Lawal, Samuel David, Chidi Igiwagu, Esther Daniel | | |
 
 ---
 *The PM Tribe — IT Project Management Bootcamp | Project 500, Cohort 1 | Group H*
