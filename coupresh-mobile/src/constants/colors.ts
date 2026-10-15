@@ -1,0 +1,15 @@
+export const colors = {
+  forest: '#0B5D3B',
+  brand: '#0E7A45',
+  mint: '#C3E8D5',
+  surface: '#F4FAF7',
+  yellow: '#FFC20E',
+  cream: '#FCEFCB',
+  creamBorder: '#EBD9A8',
+  inputBg: '#D9D9D9',
+  placeholder: '#7A7A7A',
+  gray: '#6B6B6B',
+  text: '#000000',
+  white: '#FFFFFF',
+  error: '#C62828',
+};
