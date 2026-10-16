@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Student = require('../models/Student');
+const authenticate = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -83,5 +84,29 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
+
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const student = await Student.findByPk(req.studentId);
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    res.json({
+      student: {
+        id: student.id,
+        fullName: student.fullName,
+        email: student.email,
+        phone: student.phone,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+});
+
+
+
 
 module.exports = router;
