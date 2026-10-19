@@ -5,6 +5,8 @@ const defaultStepLabels = ['Your details', 'Campus life', 'Your goal']
 export default function OnboardingLayout({
   children,
   description,
+  error,
+  isSubmitting = false,
   nextLabel = 'Continue',
   onBack,
   onNext,
@@ -53,16 +55,17 @@ export default function OnboardingLayout({
 
           <form className="onboarding-form" onSubmit={handleSubmit}>
             {children}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <div className="form-actions">
               <button className="back-button" onClick={onBack} type="button">
                 Back
               </button>
-              <button className="primary-button" type="submit">
-                {nextLabel}
+              <button className="primary-button" disabled={isSubmitting} type="submit">
+                {isSubmitting ? 'Creating account…' : nextLabel}
               </button>
             </div>
           </form>
-          <p className="privacy-note">Demo only. Your details stay in this page and are not sent or saved.</p>
+          <p className="privacy-note">Your account details are sent securely to CouPreshFund to create your student account.</p>
         </div>
       </section>
     </main>

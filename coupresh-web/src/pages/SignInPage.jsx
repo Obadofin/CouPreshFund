@@ -1,13 +1,27 @@
 import { useState } from 'react'
 import BrandIdentity from '../components/BrandIdentity.jsx'
 
-export default function SignInPage({ onBack, onCreateAccount }) {
+export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    setMessage('Demo only. No sign-in request was sent and no details were saved.')
+    setMessage('')
+    setIsSubmitting(true)
+
+    const formData = new FormData(event.currentTarget)
+    try {
+      await onSubmit({
+        emailOrPhone: String(formData.get('emailOrPhone')).trim(),
+        password: String(formData.get('password')),
+      })
+    } catch (error) {
+      setMessage(error.message || 'Sign in failed. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -65,7 +79,9 @@ export default function SignInPage({ onBack, onCreateAccount }) {
               </svg>
             </button>
           </label>
-          <button className="signin-submit" type="submit">Sign In</button>
+          <button className="signin-submit" disabled={isSubmitting} type="submit">
+            {isSubmitting ? 'Signing in…' : 'Sign In'}
+          </button>
         </form>
 
         <button
@@ -86,7 +102,20 @@ export default function SignInPage({ onBack, onCreateAccount }) {
           Create New Account
         </button>
 
-        <p className="signin-feedback" aria-live="polite" role="status">{message}</p>
+        {message && (
+          <div className="signin-feedback" aria-live="assertive" role="alert">
+            <span className="signin-feedback-icon" aria-hidden="true">!</span>
+            <span>{message}</span>
+            <button
+              aria-label="Dismiss sign-in message"
+              className="signin-feedback-dismiss"
+              onClick={() => setMessage('')}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         <p className="signin-footer">
           Already have an account?{' '}

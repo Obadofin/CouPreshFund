@@ -13,11 +13,13 @@ import SavingsPlanPage from './pages/SavingsPlanPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import StudentDetailsPage from './pages/StudentDetailsPage.jsx'
 import WelcomePage from './pages/WelcomePage.jsx'
+import { clearAuthToken, loginStudent, registerStudent } from './utils/authApi.js'
 import './App.css'
 
 const initialProfile = {
   fullName: '',
   email: '',
+  password: '',
   institution: '',
   course: '',
   level: '',
@@ -36,6 +38,8 @@ const graduationYears = Array.from(
 function AppRoutes() {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(initialProfile)
+  const [signupError, setSignupError] = useState('')
+  const [isRegistering, setIsRegistering] = useState(false)
 
   function updateProfile(event) {
     const { name, value } = event.target
@@ -43,8 +47,47 @@ function AppRoutes() {
   }
 
   function startOver() {
+    clearAuthToken()
     setProfile(initialProfile)
     navigate('/')
+  }
+
+  async function handleRegistration() {
+    setSignupError('')
+    setIsRegistering(true)
+
+    let registered = false
+    try {
+      await registerStudent(profile)
+      registered = true
+      const student = await loginStudent({
+        emailOrPhone: profile.email,
+        password: profile.password,
+      })
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        fullName: student.fullName,
+        email: student.email || currentProfile.email,
+        password: '',
+      }))
+      navigate('/signup/campus')
+    } catch (error) {
+      setSignupError(registered
+        ? `Your account was created, but automatic sign-in failed. Please sign in from the login page. ${error.message}`
+        : error.message || 'Account creation failed. Please try again.')
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
+  async function handleSignIn(credentials) {
+    const student = await loginStudent(credentials)
+    setProfile({
+      ...initialProfile,
+      fullName: student.fullName,
+      email: student.email || '',
+    })
+    navigate('/home')
   }
 
   return (
@@ -70,6 +113,7 @@ function AppRoutes() {
           <SignInPage
             onBack={() => navigate('/')}
             onCreateAccount={() => navigate('/signup/details')}
+            onSubmit={handleSignIn}
           />
         )}
       />
@@ -78,9 +122,11 @@ function AppRoutes() {
         path="/signup/details"
         element={(
           <StudentDetailsPage
+            error={signupError}
+            isSubmitting={isRegistering}
             onBack={() => navigate('/')}
             onChange={updateProfile}
-            onNext={() => navigate('/signup/campus')}
+            onNext={handleRegistration}
             profile={profile}
           />
         )}

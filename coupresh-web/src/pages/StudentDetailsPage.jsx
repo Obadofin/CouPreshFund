@@ -1,9 +1,18 @@
 import OnboardingLayout from '../components/OnboardingLayout.jsx'
 
-export default function StudentDetailsPage({ onBack, onChange, onNext, profile }) {
+export default function StudentDetailsPage({
+  error,
+  isSubmitting,
+  onBack,
+  onChange,
+  onNext,
+  profile,
+}) {
   return (
     <OnboardingLayout
       description="Start with the basics for your student profile."
+      error={error}
+      isSubmitting={isSubmitting}
       onBack={onBack}
       onNext={onNext}
       step={0}
@@ -33,6 +42,20 @@ export default function StudentDetailsPage({ onBack, onChange, onNext, profile }
             required
             type="email"
             value={profile.email}
+          />
+        </div>
+        <div className="field-group">
+          <label htmlFor="signupPassword">Password</label>
+          <input
+            autoComplete="new-password"
+            id="signupPassword"
+            minLength="8"
+            name="password"
+            onChange={onChange}
+            placeholder="At least 8 characters"
+            required
+            type="password"
+            value={profile.password}
           />
         </div>
       </div>
