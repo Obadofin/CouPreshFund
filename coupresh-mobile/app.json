@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "coupresh-mobile",
+    "name": "CoupreshFund",
     "slug": "coupresh-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,6 +11,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.coupresh.fund",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,6 +38,12 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "256c3871-fe70-40bc-b193-8308195c5c9d"
+      }
     }
   }
 }
