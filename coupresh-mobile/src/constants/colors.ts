@@ -12,4 +12,16 @@ export const colors = {
   text: '#000000',
   white: '#FFFFFF',
   error: '#C62828',
+
+  // new design
+  page: '#F3F8F5',
+  ink: '#0F1F18',
+  muted: '#6B7A72',
+  line: '#E6EEE9',
+  dark: '#0B3D2A',
+  tint: '#E3F4EA',
+  lime: '#22C55E',
+  purple: '#6D3FD0',
+  purpleTint: '#EDE7FB',
+  amber: '#F5B820',
 };

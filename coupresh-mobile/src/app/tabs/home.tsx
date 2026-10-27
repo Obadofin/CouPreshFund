@@ -1,196 +1,162 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ComponentProps } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Logo } from '../../components/ui';
+import { ActivityList, BellButton, Card, ProgressRow, SectionTitle } from '../../components/parts';
 import { colors } from '../../constants/colors';
-import { getTierInfo } from '../../constants/tiers';
+import { activities, fundStats, naira, profile } from '../../constants/data';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 // Sample data. Later this will come from the backend.
-const user = {
-  name: 'Ada',
-  initials: 'AO',
-  saved: 125000,
-  goal: 500000,
-  points: 340,
-  monthsToGraduation: 19,
-  streakWeeks: 8,
-  weeklyTarget: 5000,
-  loggedThisWeek: 0,
-};
+const stages: { label: string; sub: string; icon: IconName; good?: boolean; current?: boolean }[] = [
+  { label: 'Save', sub: 'On track', icon: 'wallet-outline', good: true },
+  { label: 'Learn', sub: '8/12', icon: 'book-outline' },
+  { label: 'Grow', sub: '2 projects', icon: 'trending-up', current: true },
+  { label: 'Graduate', sub: 'In progress', icon: 'school-outline' },
+  { label: 'Launch', sub: 'Not started', icon: 'rocket-outline' },
+];
 
-const naira = (n: number) => '₦' + n.toLocaleString('en-US');
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function Home() {
-  const percent = Math.min(100, Math.round((user.saved / user.goal) * 100));
-  const { current, next } = getTierInfo(user.saved);
-
-  const tierText = next
-    ? `Tier: ${current?.name ?? 'Getting started'} ~ ${naira(next.threshold - user.saved)} to ${next.name}`
-    : `Tier: ${current?.name} ~ Top tier reached`;
-
-  const weekSub =
-    user.loggedThisWeek > 0 ? `Logged ${naira(user.loggedThisWeek)}` : 'Not logged yet';
+  const router = useRouter();
+  const s = fundStats();
+  const current = stages.find((x) => x.current);
+  const openPlan = () => router.navigate('/tabs/money');
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Mint header with logo (scrolls away with the page) */}
-        <View style={styles.header}>
-          <Logo />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Greeting */}
+        <View style={styles.topRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.hello}>
+              {greeting()}, {profile.firstName}
+            </Text>
+            <Text style={styles.helloSub}>Your future is taking shape.</Text>
+          </View>
+          <BellButton />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{profile.initials}</Text>
+          </View>
         </View>
 
-        <View style={styles.body}>
-          {/* Greeting */}
-          <View style={styles.greetRow}>
-            <View>
-              <Text style={styles.hi}>Hi, {user.name}</Text>
-              <Text style={styles.onTrack}>You’re on track</Text>
-            </View>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user.initials}</Text>
-            </View>
+        {/* Journey hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Your Journey to Graduation</Text>
+          <Text style={styles.heroMeta}>
+            Expected: {s.graduationLabel}  •  {s.monthsLeft} {s.monthsLeft === 1 ? 'month' : 'months'} left
+          </Text>
+          <View style={styles.stageBadge}>
+            <Text style={styles.stageBadgeText}>Current stage: {current?.label}</Text>
           </View>
+          <Text style={styles.heroNext}>Next: Complete your financial readiness assessment</Text>
+        </View>
 
-          {/* Total saved card */}
-          <View style={styles.card}>
-            <View style={styles.cardTop}>
-              <Text style={styles.cardLabel}>Total Saved</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{user.points} pts</Text>
+        {/* Journey steps */}
+        <SectionTitle>Your Journey</SectionTitle>
+        <Card style={styles.journey}>
+          {stages.map((st) => (
+            <View key={st.label} style={styles.stage}>
+              <View style={[styles.stageDot, st.current && styles.stageDotOn]}>
+                <Ionicons name={st.icon} size={18} color={st.current ? colors.white : colors.dark} />
               </View>
+              <Text style={styles.stageLabel}>{st.label}</Text>
+              <Text style={[styles.stageSub, st.good && { color: colors.brand }]}>{st.sub}</Text>
             </View>
-            <Text style={styles.amount}>{naira(user.saved)}</Text>
-            <Text style={styles.goalText}>of {naira(user.goal)} goal</Text>
+          ))}
+        </Card>
 
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: `${percent}%` }]} />
-            </View>
-
-            <Text style={styles.tierText}>{tierText}</Text>
+        {/* Graduation fund */}
+        <Card style={{ marginTop: 14 }}>
+          <Pressable style={styles.fundHead} onPress={openPlan}>
+            <Text style={styles.fundTitle}>Graduation Fund</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+          <View style={styles.amountRow}>
+            <Text style={styles.amount}>{naira(s.saved)}</Text>
+            <Text style={styles.amountOf}> / {naira(s.goal)}</Text>
           </View>
-
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Ionicons name="school-outline" size={44} color={colors.text} />
-              <Text style={styles.statBig}>{user.monthsToGraduation} months</Text>
-              <Text style={styles.statSmall}>to graduation</Text>
-            </View>
-            <View style={styles.stat}>
-              <Ionicons name="flame" size={32} color="#F97316" />
-              <Text style={styles.statBig}>{user.streakWeeks} weeks</Text>
-              <Text style={styles.statSmall}>savings streak</Text>
-            </View>
-          </View>
-
-          {/* This week */}
-          <View style={styles.weekCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.weekTitle}>This week: {naira(user.weeklyTarget)}</Text>
-              <Text style={styles.weekSub}>{weekSub}</Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [styles.logBtn, pressed && { opacity: 0.85 }]}
-              onPress={() => Alert.alert('Coming soon', 'Logging savings is not built yet.')}
-            >
-              <Text style={styles.logBtnText}>{'Log\nNow'}</Text>
+          <ProgressRow percent={s.percent} />
+          <Text style={styles.small}>
+            Next milestone: {s.next ? naira(s.next.amount) : 'Goal reached'}
+          </Text>
+          <View style={styles.planRow}>
+            <Text style={styles.planText}>Monthly saving plan: {naira(s.monthlyPlan)}</Text>
+            <Pressable style={styles.viewBtn} onPress={openPlan} accessibilityRole="button">
+              <Text style={styles.viewBtnText}>View Plan</Text>
             </Pressable>
           </View>
-        </View>
+        </Card>
+
+        {/* Recent activity */}
+        <SectionTitle>Recent Activity</SectionTitle>
+        <ActivityList items={activities} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.mint },
-  scroll: { flex: 1, backgroundColor: colors.surface },
-  scrollContent: { flexGrow: 1 },
+  screen: { flex: 1, backgroundColor: colors.page },
+  content: { padding: 16, paddingBottom: 32 },
 
-  header: { backgroundColor: colors.mint, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 48 },
-  body: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    padding: 16,
-    paddingBottom: 32,
-  },
-
-  greetRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  hi: { fontSize: 20, fontWeight: '700', color: colors.text },
-  onTrack: { fontSize: 14, color: colors.gray },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hello: { fontSize: 20, fontWeight: '700', color: colors.ink },
+  helloSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 12, fontWeight: '700', color: colors.white },
+
+  hero: { backgroundColor: colors.forest, borderRadius: 16, padding: 14, marginTop: 16 },
+  heroTitle: { fontSize: 15, fontWeight: '700', color: colors.white },
+  heroMeta: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 8 },
+  stageBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.lime,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 10,
+  },
+  stageBadgeText: { fontSize: 11, fontWeight: '700', color: '#053B22' },
+  heroNext: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 12 },
+
+  journey: { flexDirection: 'row', paddingHorizontal: 6 },
+  stage: { flex: 1, alignItems: 'center' },
+  stageDot: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 15, fontWeight: '800', color: colors.brand },
+  stageDotOn: { backgroundColor: colors.dark },
+  stageLabel: { fontSize: 11, fontWeight: '700', color: colors.ink, marginTop: 6 },
+  stageSub: { fontSize: 10, color: colors.muted, marginTop: 1 },
 
-  card: { backgroundColor: colors.forest, borderRadius: 16, padding: 14, marginTop: 16 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardLabel: { color: colors.white, fontSize: 16 },
-  badge: {
-    backgroundColor: '#FDF1C7',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  badgeText: { fontSize: 13, color: '#5B4300', fontWeight: '500' },
-  amount: { color: colors.white, fontSize: 34, fontWeight: '800', marginTop: 6 },
-  goalText: { color: colors.white, opacity: 0.85, fontSize: 13 },
-  track: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    marginTop: 12,
-    overflow: 'hidden',
-  },
-  fill: { height: '100%', borderRadius: 6, backgroundColor: colors.yellow },
-  tierText: { color: colors.white, fontSize: 16, marginTop: 14, lineHeight: 22 },
-
-  statsRow: { flexDirection: 'row', gap: 14, marginTop: 18 },
-  stat: {
-    flex: 1,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.creamBorder,
-    borderRadius: 14,
-    padding: 10,
-    minHeight: 104,
-    justifyContent: 'flex-end',
-  },
-  statBig: { fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 4 },
-  statSmall: { fontSize: 15, color: colors.gray },
-
-  weekCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E3E8E5',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 18,
-  },
-  weekTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  weekSub: { fontSize: 14, color: colors.gray, marginTop: 2 },
-  logBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logBtnText: { color: colors.white, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  fundHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fundTitle: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  amountRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 6 },
+  amount: { fontSize: 24, fontWeight: '800', color: colors.ink },
+  amountOf: { fontSize: 12, color: colors.muted, marginBottom: 3 },
+  small: { fontSize: 11, color: colors.muted, marginTop: 10 },
+  planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  planText: { fontSize: 12, fontWeight: '600', color: colors.ink, flex: 1 },
+  viewBtn: { backgroundColor: colors.forest, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: colors.white },
 });
