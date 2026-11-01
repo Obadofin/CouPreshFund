@@ -159,7 +159,6 @@ export default function SavingsPlanPage({ onAmountChange, onBack, onChange, onNe
             </aside>
 
             <button className="savings-continue" type="submit">Continue</button>
-            <p className="savings-demo-note">Mock plan only. No money will be moved or saved.</p>
           </form>
         </section>
       </div>

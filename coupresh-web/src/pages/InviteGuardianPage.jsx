@@ -63,7 +63,6 @@ export default function InviteGuardianPage() {
             </a>
           </div>
           <p className="invite-notice" aria-live="polite" role="status">{notice}</p>
-          <p className="invite-demo-note">Demo code only. It is not linked to an account.</p>
         </section>
       </div>
     </main>

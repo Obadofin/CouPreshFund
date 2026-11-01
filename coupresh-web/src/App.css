@@ -657,6 +657,122 @@
   }
 }
 
+.splash-screen {
+  display: grid;
+  min-height: 100svh;
+  grid-template-rows: 1fr auto;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(44px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(145deg, #0b4032 0%, #0c503d 54%, #116148 100%);
+}
+
+.splash-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.splash-mark {
+  display: grid;
+  width: 104px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: #1fc362;
+}
+
+.splash-mark svg {
+  width: 54px;
+  height: 44px;
+  overflow: visible;
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+}
+
+.splash-mark svg path:first-child {
+  fill: none;
+}
+
+.splash-wordmark {
+  margin: 18px 0 0;
+  color: #fff;
+  font-size: clamp(29px, 7vw, 36px);
+  font-weight: 750;
+  letter-spacing: -1.5px;
+  line-height: 1.15;
+}
+
+.splash-wordmark span,
+.splash-footer p span {
+  color: #9162ff;
+}
+
+.splash-tagline {
+  margin: 14px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.splash-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.splash-footer p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05px;
+}
+
+.splash-progress {
+  width: 120px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 28%);
+}
+
+.splash-progress-fill {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+  animation: splash-progress 2.4s ease-in-out forwards;
+}
+
+@keyframes splash-progress {
+  to {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .splash-screen {
+    padding-inline: 16px;
+  }
+
+  .splash-footer p {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-progress-fill {
+    animation-duration: 1ms;
+  }
+}
+
 .welcome-screen {
   /* width: min(calc(100% - 32px), 1440px); */
   /* min-height: calc(100svh - 32px); */

@@ -1,17 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import CampusDetailsPage from './pages/CampusDetailsPage.jsx'
+import DashboardExperience from './pages/DashboardExperience.jsx'
 import GoalSetupPage from './pages/GoalSetupPage.jsx'
 import GrowthUnlockPage from './pages/GrowthUnlockPage.jsx'
-import HomePage from './pages/HomePage.jsx'
 import InviteGuardianPage from './pages/InviteGuardianPage.jsx'
-import LearnPage from './pages/LearnPage.jsx'
 import ProfilePreviewPage from './pages/ProfilePreviewPage.jsx'
-import ProfilePage from './pages/ProfilePage.jsx'
-import RoadmapPage from './pages/RoadmapPage.jsx'
 import SavingsPlanPage from './pages/SavingsPlanPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import StudentDetailsPage from './pages/StudentDetailsPage.jsx'
+import SplashScreen from './pages/SplashScreen.jsx'
 import WelcomePage from './pages/WelcomePage.jsx'
 import { clearAuthToken, loginStudent, registerStudent } from './utils/authApi.js'
 import './App.css'
@@ -19,6 +17,7 @@ import './App.css'
 const initialProfile = {
   fullName: '',
   email: '',
+  phone: '',
   password: '',
   institution: '',
   course: '',
@@ -37,9 +36,17 @@ const graduationYears = Array.from(
 
 function AppRoutes() {
   const navigate = useNavigate()
+  const [showSplash, setShowSplash] = useState(() => window.location.pathname === '/')
   const [profile, setProfile] = useState(initialProfile)
   const [signupError, setSignupError] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+
+  useEffect(() => {
+    if (!showSplash) return undefined
+
+    const timer = window.setTimeout(() => setShowSplash(false), 2400)
+    return () => window.clearTimeout(timer)
+  }, [showSplash])
 
   function updateProfile(event) {
     const { name, value } = event.target
@@ -61,13 +68,14 @@ function AppRoutes() {
       await registerStudent(profile)
       registered = true
       const student = await loginStudent({
-        emailOrPhone: profile.email,
+        emailOrPhone: profile.email || profile.phone,
         password: profile.password,
       })
       setProfile((currentProfile) => ({
         ...currentProfile,
         fullName: student.fullName,
         email: student.email || currentProfile.email,
+        phone: student.phone || currentProfile.phone,
         password: '',
       }))
       navigate('/signup/campus')
@@ -86,25 +94,33 @@ function AppRoutes() {
       ...initialProfile,
       fullName: student.fullName,
       email: student.email || '',
+      phone: student.phone || '',
     })
     navigate('/home')
   }
 
   return (
     <Routes>
-      <Route path="/home" element={<HomePage profile={profile} />} />
-      <Route path="/profile" element={<ProfilePage onLogout={startOver} profile={profile} />} />
-      <Route path="/roadmap" element={<RoadmapPage />} />
+      <Route path="/home" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/money/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/growth/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/future/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/profile" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/roadmap" element={<Navigate to="/future" replace />} />
       <Route path="/goals/invite" element={<InviteGuardianPage />} />
       <Route path="/goals" element={<GrowthUnlockPage onInvite={() => navigate('/goals/invite')} />} />
-      <Route path="/learn" element={<LearnPage />} />
+      <Route path="/learn" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
       <Route
         path="/"
         element={(
-          <WelcomePage
-            onSignIn={() => navigate('/login')}
-            onStart={() => navigate('/signup/details')}
-          />
+          showSplash
+            ? <SplashScreen />
+            : (
+              <WelcomePage
+                onSignIn={() => navigate('/login')}
+                onStart={() => navigate('/signup/details')}
+              />
+            )
         )}
       />
       <Route
@@ -126,6 +142,7 @@ function AppRoutes() {
             isSubmitting={isRegistering}
             onBack={() => navigate('/')}
             onChange={updateProfile}
+            onSignIn={() => navigate('/login')}
             onNext={handleRegistration}
             profile={profile}
           />

@@ -7,16 +7,16 @@ export default function ProfilePreviewPage({ onContinue, profile }) {
   return (
     <main className="app-shell">
       <BrandPanel />
-      <section className="form-panel" aria-label="Profile preview">
+      <section className="form-panel" aria-label="Account setup complete">
         <div className="onboarding-wrap">
           <div className="onboarding-topline">
             <span>STUDENT SETUP</span>
-            <span>Preview complete</span>
+            <span>Setup complete</span>
           </div>
           <section className="completion-panel" aria-live="polite">
             <span className="completion-mark" aria-hidden="true">OK</span>
-            <p className="form-kicker">PROFILE PREVIEW</p>
-            <h2>You’ve got a starting plan, {firstName}.</h2>
+            <p className="form-kicker">YOUR STARTING PLAN</p>
+            <h2>Your plan is ready, {firstName}.</h2>
             <p className="completion-intro">
               Here’s the goal you set for {profile.graduationYear}.
             </p>
@@ -38,7 +38,6 @@ export default function ProfilePreviewPage({ onContinue, profile }) {
                 <dd>{profile.institution}</dd>
               </div>
             </dl>
-            <p className="privacy-note">This is a local preview, not a financial account.</p>
             <button className="primary-button reset-button" onClick={onContinue} type="button">
               Continue to home
             </button>

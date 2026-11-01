@@ -86,7 +86,7 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
 
         <button
           className="signin-forgot"
-          onClick={() => setMessage('Password recovery is not connected in this demo.')}
+          onClick={() => setMessage('Password recovery is coming soon.')}
           type="button"
         >
           Forgot Password?
@@ -119,7 +119,7 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
 
         <p className="signin-footer">
           Already have an account?{' '}
-          <button onClick={() => setMessage('You are already on the sign-in preview.')} type="button">
+          <button onClick={() => setMessage('You are already on the sign-in page.')} type="button">
             Log in
           </button>
         </p>

@@ -40,7 +40,6 @@ export default function ProfilePage({ onLogout, profile }) {
           ))}
         </dl>
 
-        <p className="profile-demo-note">Preview profile. Details are held in memory only.</p>
         <button className="profile-logout" onClick={onLogout} type="button">
           Log out
         </button>

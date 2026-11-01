@@ -96,14 +96,13 @@ export default function HomePage({ profile }) {
         </div>
         <button
           className="weekly-action"
-          onClick={() => setNotice('Demo only. This contribution has not been saved.')}
+          onClick={() => setNotice('Contribution logging is coming soon.')}
           type="button"
         >
           Log savings
         </button>
         <p className="dashboard-notice" aria-live="polite" role="status">{notice}</p>
       </section>
-      <p className="dashboard-demo-note">Preview data only. No money has been moved.</p>
     </DashboardShell>
   )
 }

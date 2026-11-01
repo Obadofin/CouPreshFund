@@ -3,7 +3,7 @@ import DashboardShell from '../components/DashboardShell.jsx'
 const milestones = [
   { name: 'Starter', amount: 'N10,000', detail: 'Unlocked 12 Mar', unlocked: true },
   { name: 'Builder', amount: 'N50,000', detail: 'Unlocked 30 May', unlocked: true },
-  { name: 'Grower', amount: 'N100,000', detail: 'Growth Unlock preview', unlocked: true, current: true },
+  { name: 'Grower', amount: 'N100,000', detail: 'Growth Unlock', unlocked: true, current: true },
   { name: 'Accelerator', amount: 'N250,000', detail: 'N125,000 to go - 3 lessons', unlocked: false },
 ]
 

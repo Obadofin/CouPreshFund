@@ -1,0 +1,98 @@
+COUPRESHFUND WEB FRONTEND - WORK SUMMARY
+========================================
+
+Project
+-------
+CouPreshFund is a student-focused financial empowerment frontend built with
+React, React Router, and Vite. This summary records the frontend work completed
+through November 1, 2026.
+
+DESIGN AND BRANDING
+-------------------
+- Reviewed the available CoupreshFund logo and added the supplied logo asset
+  to the frontend's public assets.
+- Reworked the welcome/onboarding screen to use the real logo and a more
+  polished branded presentation.
+- Updated the account creation screen to match the supplied design direction.
+- Added a splash screen that leads into the welcome experience.
+- Updated Nigerian currency formatting to use the naira symbol.
+
+RESPONSIVE DASHBOARD AND PRODUCT SCREENS
+----------------------------------------
+- Reworked the frontend dashboard experience around the supplied product
+  direction and page naming.
+- Added or refreshed these named product views:
+    Home
+    My Money and Graduation Fund
+    Budget Planner
+    Learning Hub
+    Skills & Entrepreneurship
+    Challenge Details
+    My Growth Progress
+    My Future
+    Opportunities
+    Points & Tiers
+    Profile & Settings
+- Added shared dashboard navigation and route-based screen selection.
+- Adjusted desktop layouts to use laptop screen width and multi-column page
+  layouts rather than a narrow, phone-shaped container.
+- Kept mobile layouts single-column and responsive.
+- Corrected large spacing issues in the Learning Hub and Points & Tiers
+  desktop layouts.
+- Preserved interactions such as tabs, budget editing, lesson details,
+  challenge steps, opportunity filters, profile settings, and sign-out.
+
+ACCOUNT AND ONBOARDING FLOW
+---------------------------
+- Implemented the welcome, sign-in, account creation, campus details, goal
+  setup, savings plan, and setup-complete screens.
+- Account creation accepts a full name, email and/or phone number, and
+  password.
+- Added frontend validation requiring an email address or phone number.
+- Connected registration and sign-in to the existing backend authentication
+  API, including automatic sign-in after registration.
+- Added user-facing handling for account creation and sign-in errors.
+- Added a profile summary at the end of onboarding.
+
+BACKEND INTEGRATION AND CURRENT DATA STATUS
+-------------------------------------------
+- The frontend integrates with the existing student authentication endpoints:
+  registration, login, and the authenticated current-student endpoint.
+- Authentication tokens are stored in browser local storage and attached to
+  authenticated API requests.
+- The current backend provides student authentication, but not persistence
+  endpoints for dashboard balances, savings activity, goals, budgets, learning
+  progress, opportunities, or guardian invitations.
+- Those product areas currently show frontend-defined content and values;
+  signup information beyond the account identity is held in memory and does
+  not survive a browser refresh.
+- No savings or investment transaction is initiated by the frontend. Growth
+  projections are calculated in the browser.
+- Removing UI language that called content a demo or preview changed only
+  labels and messages. It did not connect these product screens to live
+  backend data.
+
+PROJECT DOCUMENTATION
+---------------------
+- Updated coupresh-web/README.md with setup steps, frontend API configuration,
+  connected authentication routes, product-data status, routes, responsive
+  design notes, and lint/build commands.
+
+VALIDATION COMPLETED
+--------------------
+- Frontend lint completed successfully with: npm run lint
+- Production frontend build completed successfully with: npm run build
+- Whitespace validation completed successfully with: git diff --check
+- Browser layout checks were performed at desktop and mobile viewport sizes,
+  including the Learning Hub and Points & Tiers pages.
+
+REMAINING WORK
+--------------
+- Add backend models and API endpoints for the product data that is currently
+  frontend-defined.
+- Load and persist campus, goal, savings plan, budget, learning, activity,
+  opportunity, and invitation data using those endpoints.
+- Restore the authenticated account from the current-student endpoint after
+  page reload and add route protection where appropriate.
+- Connect buttons and actions that currently provide a local UI response to
+  the corresponding backend operations as those APIs become available.

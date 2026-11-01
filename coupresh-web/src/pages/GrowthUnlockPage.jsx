@@ -36,7 +36,7 @@ export default function GrowthUnlockPage({ onInvite }) {
         <h1 id="growth-title">Growth Unlock</h1>
 
         <p className="growth-intro">
-          Unlock at Grower. See how your savings could grow. This is a simulation.
+          Unlock at Grower. Explore how your savings could grow.
         </p>
 
         <div className="growth-amount-heading">
@@ -56,7 +56,7 @@ export default function GrowthUnlockPage({ onInvite }) {
           value={monthlyAdd}
         />
 
-        <div className="growth-controls" role="group" aria-label="Simulation term">
+        <div className="growth-controls" role="group" aria-label="Projection term">
           {termOptions.map((option) => (
             <button
               aria-pressed={termMonths === option.months}
@@ -72,16 +72,13 @@ export default function GrowthUnlockPage({ onInvite }) {
         </div>
 
         <section className="growth-result" aria-live="polite">
-          <h2>Illustrative value at {termMonths === 6 ? '6 months' : `${termMonths / 12} ${termMonths === 12 ? 'year' : 'years'}`}</h2>
+          <h2>Projected value at {termMonths === 6 ? '6 months' : `${termMonths / 12} ${termMonths === 12 ? 'year' : 'years'}`}</h2>
           <p className="growth-total">{formatNaira(projection.projectedValue)}</p>
           <p className="growth-breakdown">
             You add {formatNaira(projection.totalAdded)} ~ growth {formatNaira(projection.projectedGrowth)}
           </p>
         </section>
 
-        <p className="growth-disclaimer">
-          Illustrations only. Not advice. No money is moved or invested in this preview.
-        </p>
         <button className="growth-invite-button" onClick={onInvite} type="button">
           Invite a parent or guardian
         </button>

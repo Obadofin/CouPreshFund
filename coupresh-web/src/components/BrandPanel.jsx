@@ -18,7 +18,7 @@ export default function BrandPanel() {
           </p>
         </div>
 
-        <div className="goal-preview" aria-label="Example savings goal preview">
+        <div className="goal-preview" aria-label="Graduation savings goal">
           <div className="preview-topline">
             <span>YOUR GRADUATION GOAL</span>
             <span className="preview-status">IN PROGRESS</span>

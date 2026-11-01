@@ -1,45 +1,41 @@
-function GraduationMark() {
-  return (
-    <span className="welcome-mark" aria-hidden="true">
-      <svg viewBox="0 0 100 100" focusable="false">
-        <path d="M15 39 50 25l35 14-35 15L15 39Z" />
-        <path d="M27 47v18c0 8 10 14 23 14s23-6 23-14V47" />
-        <path d="M85 40v21" />
-      </svg>
-    </span>
-  )
-}
+import './WelcomePage.css'
 
 export default function WelcomePage({ onStart, onSignIn }) {
   return (
-    <main className="welcome-screen">
-      <div className="welcome-content">
-        <header className="welcome-brand">
-          <GraduationMark />
-          <p>CouPreshFund Grad</p>
-        </header>
+    <main className="onboarding-splash">
+      <header className="onboarding-splash-top">
+        <span aria-hidden="true" />
+        <button onClick={onStart} type="button">Skip</button>
+      </header>
 
-        <section className="welcome-message" aria-labelledby="welcome-title">
-          <h1 id="welcome-title">
-            Save.Learn.<br />
-            Grow.<br />
-            Graduate.
-          </h1>
-          <p>
-            <span>Join students building capital</span>
-            <span>before convocation.</span>
-          </p>
-        </section>
-
-        <div className="welcome-actions">
-          <button className="welcome-primary" onClick={onStart} type="button">
-            Get started, it's free
-          </button>
-          <button className="welcome-secondary" onClick={onSignIn} type="button">
-            I already have an account
-          </button>
+      <section className="onboarding-splash-content" aria-labelledby="welcome-title">
+        <div className="onboarding-brand-art">
+          <img
+            alt="Coupresh Fund — Build Today. Launch Tomorrow."
+            className="onboarding-logo"
+            src="/coupreshfund-logo.png"
+          />
+          <span aria-hidden="true" className="onboarding-art-spark onboarding-art-spark-one" />
+          <span aria-hidden="true" className="onboarding-art-spark onboarding-art-spark-two" />
         </div>
-      </div>
+
+        <div className="onboarding-splash-copy">
+          <h1 id="welcome-title">Your future starts here</h1>
+          <p>Build your savings, gain valuable skills, and get ready for life after university.</p>
+        </div>
+      </section>
+
+      <footer className="onboarding-splash-footer">
+        <div aria-label="Introduction screen 1 of 3" className="onboarding-dots">
+          <span className="is-current" />
+          <span />
+          <span />
+        </div>
+        <button className="onboarding-primary" onClick={onStart} type="button">Get Started</button>
+        <button className="onboarding-login" onClick={onSignIn} type="button">
+          I already have an account
+        </button>
+      </footer>
     </main>
   )
 }

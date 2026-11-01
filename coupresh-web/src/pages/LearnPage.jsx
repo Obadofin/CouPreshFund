@@ -10,7 +10,7 @@ const lessons = [
     detail: '4 min  ~  Starter',
     category: 'Budgeting',
     unlocked: true,
-    preview: 'Start with essentials, set a weekly limit, and give every naira a clear job.',
+    description: 'Start with essentials, set a weekly limit, and give every naira a clear job.',
   },
   {
     id: '50-30-20-rule',
@@ -18,7 +18,7 @@ const lessons = [
     detail: '5 min  ~  Builder',
     category: 'Budgeting',
     unlocked: true,
-    preview: 'A simple starting point for dividing income between needs, wants, and savings.',
+    description: 'A simple starting point for dividing income between needs, wants, and savings.',
   },
   {
     id: 'treasury-bills',
@@ -26,7 +26,7 @@ const lessons = [
     detail: 'Unlocks at N250,000',
     category: 'Savings',
     unlocked: false,
-    preview: 'This lesson unlocks when you reach N250,000 in your graduation goal.',
+    description: 'This lesson unlocks when you reach N250,000 in your graduation goal.',
   },
 ]
 
@@ -104,7 +104,7 @@ export default function LearnPage() {
               role="dialog"
             >
               <button
-                aria-label="Close lesson preview"
+                aria-label="Close lesson details"
                 className="lesson-dialog-close"
                 onClick={() => setSelectedLesson(null)}
                 type="button"
@@ -113,7 +113,7 @@ export default function LearnPage() {
               </button>
               <p className="lesson-dialog-category">{selectedLesson.category}</p>
               <h2 id="lesson-dialog-title">{selectedLesson.title}</h2>
-              <p>{selectedLesson.preview}</p>
+              <p>{selectedLesson.description}</p>
               {selectedLesson.unlocked ? (
                 <button className="lesson-complete-button" onClick={completeLesson} type="button">
                   Mark lesson complete
@@ -121,7 +121,6 @@ export default function LearnPage() {
               ) : (
                 <p className="lesson-locked-note">{selectedLesson.detail}</p>
               )}
-              <p className="lesson-demo-note">Preview content only. Progress is not saved.</p>
             </section>
           </div>
         )}

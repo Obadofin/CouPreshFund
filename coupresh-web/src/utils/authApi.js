@@ -35,10 +35,15 @@ async function request(path, options = {}) {
   return result
 }
 
-export async function registerStudent({ fullName, email, password }) {
+export async function registerStudent({ fullName, email, phone, password }) {
   return request('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ fullName, email, password }),
+    body: JSON.stringify({
+      fullName,
+      email: email || undefined,
+      phone: phone || undefined,
+      password,
+    }),
   })
 }
 
