@@ -2,11 +2,12 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Student = require('../models/Student');
+const { registerRules, loginRules } = require('../validators');
 const authenticate = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerRules, async (req, res) => {
   try {
     const { fullName, email, phone, password } = req.body;
 
@@ -42,7 +43,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginRules, async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
