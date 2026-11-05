@@ -1,67 +1,68 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '../components/ui';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BrandLogo } from '../components/auth';
 import { colors } from '../constants/colors';
 
-export default function Welcome() {
+const DURATION = 2600; // how long the splash shows, in milliseconds
+
+export default function Splash() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const bar = Animated.timing(progress, {
+      toValue: 1,
+      duration: DURATION,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    });
+    bar.start();
+    // Go to onboarding by itself. replace() means Back won't return to the splash.
+    const timer = setTimeout(() => router.replace('/onboarding'), DURATION);
+    return () => {
+      bar.stop();
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const barWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['8%', '100%'] });
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.top}>
-        <View style={styles.logoCircle}>
-          <Ionicons name="school-outline" size={52} color={colors.text} />
-        </View>
-        <Text style={styles.brand}>CoupreshFund  Grad</Text>
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+
+      <View style={styles.center}>
+        <BrandLogo variant="dark" width={240} />
       </View>
 
-      <View style={styles.middle}>
-        <Text style={styles.headline}>Save.Learn.{'\n'}Grow.{'\n'}Graduate.</Text>
-        <Text style={styles.sub}>
-          Join students building capital{'\n'}before convocation.
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 28 }]}>
+        <Text style={styles.footText}>
+          SAVE. LEARN. GROW. GRADUATE. <Text style={styles.launch}>LAUNCH.</Text>
         </Text>
+        <View style={styles.track}>
+          <Animated.View style={[styles.fill, { width: barWidth }]} />
+        </View>
       </View>
-
-      <View style={styles.bottom}>
-        <Button
-          title="Get started, it’s free"
-          variant="yellow"
-          size="lg"
-          onPress={() => router.push('/register')}
-        />
-        <Button
-          title="I already have an account"
-          variant="outlineLight"
-          size="lg"
-          onPress={() => router.push('/login')}
-        />
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.forest, paddingHorizontal: 16, paddingBottom: 24 },
-  top: { alignItems: 'center', marginTop: 24 },
-  logoCircle: {
-    width: 98,
-    height: 98,
-    borderRadius: 49,
-    backgroundColor: colors.yellow,
-    alignItems: 'center',
-    justifyContent: 'center',
+  screen: { flex: 1, backgroundColor: colors.splash },
+  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 14 },
+  footText: { fontSize: 10, fontWeight: '600', color: colors.white, letterSpacing: 1 },
+  launch: { color: '#8B6CF6' },
+  track: {
+    width: 90,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
   },
-  brand: { color: colors.white, fontSize: 24, fontWeight: '600', marginTop: 20 },
-  middle: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headline: {
-    color: colors.white,
-    fontSize: 36,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 44,
-  },
-  sub: { color: colors.white, fontSize: 16, textAlign: 'center', marginTop: 48, lineHeight: 22 },
-  bottom: { gap: 24 },
+  fill: { height: '100%', backgroundColor: colors.white },
 });

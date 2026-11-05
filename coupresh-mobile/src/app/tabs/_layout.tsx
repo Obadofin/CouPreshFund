@@ -1,15 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { ComponentProps } from 'react';
+import { House, LucideIcon, Sparkles, TrendingUp, User, Wallet } from 'lucide-react-native';
 import { ColorValue } from 'react-native';
 import { colors } from '../../constants/colors';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
-const tab = (title: string, icon: IconName, activeIcon: IconName) => ({
+const tab = (title: string, Icon: LucideIcon) => ({
   title,
-  tabBarIcon: ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) => (
-    <Ionicons name={focused ? activeIcon : icon} color={color} size={size} />
+  tabBarIcon: ({ color, size }: { color: ColorValue; size: number }) => (
+    <Icon color={color as string} size={size} strokeWidth={1.8} />
   ),
 });
 
@@ -24,11 +21,11 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.line },
       }}
     >
-      <Tabs.Screen name="home" options={tab('Home', 'home-outline', 'home')} />
-      <Tabs.Screen name="money" options={tab('My Money', 'wallet-outline', 'wallet')} />
-      <Tabs.Screen name="growth" options={tab('My Growth', 'trending-up-outline', 'trending-up')} />
-      <Tabs.Screen name="future" options={tab('My Future', 'sparkles-outline', 'sparkles')} />
-      <Tabs.Screen name="profile" options={tab('Profile', 'person-outline', 'person')} />
+      <Tabs.Screen name="home" options={tab('Home', House)} />
+      <Tabs.Screen name="money" options={tab('My Money', Wallet)} />
+      <Tabs.Screen name="growth" options={tab('My Growth', TrendingUp)} />
+      <Tabs.Screen name="future" options={tab('My Future', Sparkles)} />
+      <Tabs.Screen name="profile" options={tab('Profile', User)} />
 
       {/* Old screens: hidden from the tab bar until the new designs replace them */}
       <Tabs.Screen name="roadmap" options={{ href: null }} />

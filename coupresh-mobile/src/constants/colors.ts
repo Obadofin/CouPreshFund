@@ -24,4 +24,10 @@ export const colors = {
   purple: '#6D3FD0',
   purpleTint: '#EDE7FB',
   amber: '#F5B820',
+
+    // splash, onboarding, auth
+  primary: '#0B5E3B',
+  splash: '#0D4433',
+  fieldBorder: '#DCE6E1',
+  hint: '#9AA7A0',
 };
