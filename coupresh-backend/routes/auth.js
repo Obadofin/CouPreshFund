@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Student = require('../models/Student');
+const StudentProfile = require('../models/StudentProfile');
 const { registerRules, loginRules } = require('../validators');
 const authenticate = require('../middleware/auth');
 
@@ -39,6 +40,7 @@ router.post('/register', registerRules, async (req, res) => {
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ message: 'Email or phone already registered' });
     }
+    console.error('Registration failed:', error.message);
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
@@ -82,6 +84,7 @@ router.post('/login', loginRules, async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Login failed:', error.message);
     res.status(500).json({ message: 'Something went wrong' });
   }
 });
@@ -94,15 +97,30 @@ router.get('/me', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
+    const profile = await StudentProfile.findOne({
+      where: { studentId: student.id },
+    });
+
     res.json({
       student: {
         id: student.id,
         fullName: student.fullName,
         email: student.email,
         phone: student.phone,
+        onboarding: profile ? {
+          institution: profile.institution,
+          course: profile.course,
+          level: profile.level,
+          graduationYear: profile.graduationYear,
+          goalAmount: Number(profile.goalAmount),
+          purpose: profile.purpose,
+          contribution: Number(profile.contribution),
+          cadence: profile.cadence,
+        } : null,
       },
     });
   } catch (error) {
+    console.error('Fetching current student failed:', error.message);
     res.status(500).json({ message: 'Something went wrong' });
   }
 });

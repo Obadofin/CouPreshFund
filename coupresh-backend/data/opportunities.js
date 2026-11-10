@@ -1,0 +1,58 @@
+const opportunities = [
+  {
+    id: 'tech-internship-program',
+    title: 'Tech Internship Program',
+    type: 'Internships',
+    location: 'Lagos / Remote',
+    detail: 'Practical experience for students exploring technology careers.',
+    description: 'A sample opportunity listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'briefcase',
+  },
+  {
+    id: 'nigerian-students-scholarship',
+    title: 'Scholarship for Nigerian Students',
+    type: 'Scholarships',
+    location: 'Nigeria',
+    detail: 'Scholarship opportunities for eligible students.',
+    description: 'A sample scholarship listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'award',
+  },
+  {
+    id: 'industry-mentorship-program',
+    title: 'Mentorship Program',
+    type: 'Mentorship',
+    location: 'Virtual',
+    detail: 'Connect with professionals and learn about career paths.',
+    description: 'A sample mentorship listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'people',
+  },
+  {
+    id: 'entrepreneurship-grant',
+    title: 'Entrepreneurship Grant',
+    type: 'Grants',
+    location: 'Nigeria',
+    detail: 'Explore funding and business support for student entrepreneurs.',
+    description: 'A sample grant listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'sparkle',
+  },
+  {
+    id: 'graduate-trainee-program',
+    title: 'Graduate Trainee Program',
+    type: 'Internships',
+    location: 'Lagos',
+    detail: 'Early-career opportunities in banking and fintech.',
+    description: 'A sample trainee listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'cap',
+  },
+  {
+    id: 'women-in-tech-fellowship',
+    title: 'Women in Tech Fellowship',
+    type: 'Scholarships',
+    location: 'Remote',
+    detail: 'A six-month learning and professional development fellowship.',
+    description: 'A sample fellowship listing. Confirm eligibility, dates, and terms with the provider before applying.',
+    icon: 'sparkle',
+  },
+];
+
+module.exports = opportunities;
