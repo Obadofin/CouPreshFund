@@ -1,8 +1,8 @@
 import BrandPanel from '../components/BrandPanel.jsx'
 import formatNaira from '../utils/formatNaira.js'
 
-export default function ProfilePreviewPage({ error, isSubmitting, onContinue, profile }) {
-  const firstName = profile.fullName.trim().split(' ')[0] || 'student'
+export default function ProfilePreviewPage({ error, isSubmitting, onContinue, profile = {} }) {
+  const firstName = (profile.fullName || '').trim().split(' ')[0] || 'student'
 
   return (
     <main className="app-shell">

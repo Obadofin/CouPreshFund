@@ -1,5 +1,29 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const API_BASE_URL = configuredApiBaseUrl
+  ? configuredApiBaseUrl.replace(/\/$/, '')
+  : import.meta.env.PROD
+    ? ''
+    : '/api/v1'
 const TOKEN_STORAGE_KEY = 'coupreshfund.authToken'
+
+function getApiBaseUrl() {
+  if (!API_BASE_URL) {
+    throw new Error(
+      'Backend URL is not configured. Set VITE_API_BASE_URL in Render and redeploy the frontend.',
+    )
+  }
+
+  if (
+    import.meta.env.PROD
+    && (!/^https:\/\//i.test(API_BASE_URL) || !/\/api\/v1$/i.test(API_BASE_URL))
+  ) {
+    throw new Error(
+      'VITE_API_BASE_URL must be the full HTTPS backend URL ending in /api/v1.',
+    )
+  }
+
+  return API_BASE_URL
+}
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -22,7 +46,7 @@ async function request(path, options = {}) {
 
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+    response = await fetch(`${getApiBaseUrl()}${path}`, { ...options, headers })
   } catch {
     throw new Error('Could not reach the server. Check that the backend is running and try again.')
   }
@@ -63,12 +87,19 @@ export async function loginStudent({ emailOrPhone, password }) {
     body: JSON.stringify({ ...identity, password }),
   })
 
+  if (!result.student || typeof result.student.fullName !== 'string' || !result.token) {
+    throw new Error('The backend returned an invalid sign-in response. Check the backend URL and try again.')
+  }
+
   localStorage.setItem(TOKEN_STORAGE_KEY, result.token)
   return result.student
 }
 
 export async function getCurrentStudent() {
   const result = await request('/auth/me')
+  if (!result.student || typeof result.student.fullName !== 'string') {
+    throw new Error('The backend returned an invalid account response. Check the backend URL and try again.')
+  }
   return result.student
 }
 
