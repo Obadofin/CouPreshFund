@@ -55,16 +55,43 @@ The shared request helper is `src/utils/authApi.js`. It uses `/api/v1` by defaul
 | --- | --- |
 | `POST /api/v1/auth/register` | Sends the student's name, password, and supplied email and/or phone number. After registration, the frontend signs in automatically. |
 | `POST /api/v1/auth/login` | Signs in with an email address or phone number and password. |
-| `GET /api/v1/auth/me` | Available through `getCurrentStudent()` for retrieving the authenticated student. |
+| `GET /api/v1/auth/me` | Restores the signed-in student and saved onboarding data after a page reload. |
+| `PUT /api/v1/students/me/onboarding` | Saves school, graduation goal, purpose, and savings plan when onboarding is completed. |
+| `PUT /api/v1/students/me/goal` | Saves the graduation goal and the complete onboarding profile from the editable Goals form. |
+| `GET /api/v1/students/me/dashboard` | Loads saved goal, contribution total, progress, and recent activity for the dashboard. |
+| `POST /api/v1/students/me/contributions` | Records a self-reported savings contribution from My Money. |
+| `GET /api/v1/students/me/contributions` | Lists the student's saved contributions; available for history views. |
+| `GET /api/v1/students/me/budgets` | Loads the signed-in student's saved budget periods. |
+| `PUT /api/v1/students/me/budgets/:period` | Saves a weekly, monthly, or yearly budget amount. |
+| `GET /api/v1/students/me/expenses?period=monthly` | Loads current-period expenses and their category totals. |
+| `POST /api/v1/students/me/expenses` | Records a dated expense in Essentials, Learning, Transport, or Other. |
+| `GET /api/v1/learning/lessons` | Loads lesson summaries for the Learning Hub. |
+| `GET /api/v1/learning/lessons/:lessonId` | Loads the lesson content shown when a student opens a lesson. |
+| `GET /api/v1/students/me/learning/progress` | Restores lesson progress and completed lessons. |
+| `PUT /api/v1/students/me/learning/progress/:lessonId` | Saves lesson progress or marks a lesson complete. |
+| `GET /api/v1/skills/challenges` | Loads skills and entrepreneurship challenges. |
+| `GET /api/v1/skills/challenges/:challengeId` | Loads challenge steps. |
+| `GET /api/v1/students/me/skills/projects` | Restores the student's completed challenge steps. |
+| `PUT /api/v1/students/me/skills/projects/:challengeId` | Saves challenge step progress. |
+| `GET /api/v1/students/me/points` | Loads points balance, tier, and next-tier progress. |
+| `GET /api/v1/students/me/points/transactions` | Loads earned-points history. |
+| `GET /api/v1/opportunities` | Loads sample opportunity listings, with optional type filters. |
+| `GET /api/v1/opportunities/:opportunityId` | Loads opportunity details. |
+| `GET /api/v1/opportunities/me/saved` | Loads the student's saved opportunity IDs. |
+| `PUT /api/v1/opportunities/me/saved/:opportunityId` | Saves an opportunity. |
+| `DELETE /api/v1/opportunities/me/saved/:opportunityId` | Removes a saved opportunity. |
+| `GET /api/v1/students/me/guardian-invitations` | Loads invitation status and expiration dates. |
+| `POST /api/v1/students/me/guardian-invitations` | Creates a one-time code to share with a guardian. |
+| `DELETE /api/v1/students/me/guardian-invitations/:invitationId` | Revokes an active invitation code. |
 | `GET /api/v1/health` | Backend health endpoint; the frontend does not call it automatically. |
 
 The authentication token is stored in browser local storage under `coupreshfund.authToken` and is included in authenticated requests. The backend issues a token that expires after one day. Registration and sign-in errors are displayed in the interface.
 
 ## Product screens and data status
 
-The UI includes the complete student journey and dashboard navigation. Account registration and sign-in use the backend. The backend currently exposes authentication only; campus and graduation details, goals, savings plans, dashboard figures, learning progress, opportunities, and guardian invitations are not yet loaded from or saved to backend product APIs. These screens currently use frontend state and predefined interface content. Signup details beyond the identity fields are held in memory and are lost on refresh.
+The authentication token is restored from `/api/v1/auth/me` on reload, and dashboard/product routes require a signed-in student. Onboarding data is saved at completion and restored with the student profile. The My Money goals form updates the saved graduation target and purpose; the budget screen loads and saves amounts independently for each period, records expenses, and displays the actual category breakdown and remaining budget.
 
-No savings or investment transaction is initiated by the frontend. The growth projection is a client-side calculation. Connect the relevant screens to backend models and API routes before relying on displayed product data as account-backed or live information. The app does not currently restore an authenticated session from `/me` after reload or protect dashboard routes.
+Self-reported savings and expenses do not initiate, verify, or move money. Learning Hub progress, skills challenge steps, earned points, saved opportunities, and invite-code status are persisted by the backend. Opportunity entries are sample listings and should be verified with providers. Guardian invite acceptance, guardian accounts, and guardian access to student data are not enabled yet.
 
 ## Main routes
 

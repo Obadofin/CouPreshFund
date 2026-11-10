@@ -56,18 +56,20 @@ ACCOUNT AND ONBOARDING FLOW
 
 BACKEND INTEGRATION AND CURRENT DATA STATUS
 -------------------------------------------
-- The frontend integrates with the existing student authentication endpoints:
-  registration, login, and the authenticated current-student endpoint.
+- The frontend integrates with registration, login, authenticated student
+  restoration, onboarding persistence, dashboard summary, and contribution
+  endpoints.
 - Authentication tokens are stored in browser local storage and attached to
-  authenticated API requests.
-- The current backend provides student authentication, but not persistence
-  endpoints for dashboard balances, savings activity, goals, budgets, learning
-  progress, opportunities, or guardian invitations.
-- Those product areas currently show frontend-defined content and values;
-  signup information beyond the account identity is held in memory and does
-  not survive a browser refresh.
-- No savings or investment transaction is initiated by the frontend. Growth
-  projections are calculated in the browser.
+  authenticated API requests. The current student and saved onboarding profile
+  are restored after a page reload; dashboard routes require authentication.
+- Onboarding school, graduation goal, purpose, and savings plan are saved when
+  setup is completed.
+- The Home and My Money views load saved goals, contribution totals, progress,
+  and recent self-reported contributions from the backend.
+- Students can record and list self-reported savings. This does not initiate
+  or verify a payment.
+- Budgets, learning progress, opportunities, points, and guardian invitations
+  remain frontend-defined and are not persisted by backend APIs.
 - Removing UI language that called content a demo or preview changed only
   labels and messages. It did not connect these product screens to live
   backend data.
@@ -88,11 +90,7 @@ VALIDATION COMPLETED
 
 REMAINING WORK
 --------------
-- Add backend models and API endpoints for the product data that is currently
-  frontend-defined.
-- Load and persist campus, goal, savings plan, budget, learning, activity,
-  opportunity, and invitation data using those endpoints.
-- Restore the authenticated account from the current-student endpoint after
-  page reload and add route protection where appropriate.
-- Connect buttons and actions that currently provide a local UI response to
-  the corresponding backend operations as those APIs become available.
+- Add backend APIs for budgets, learning progress, points, and guardian
+  invitations before wiring those frontend experiences to persistent data.
+- Add automated browser-level coverage for the full registration, onboarding,
+  reload, and savings contribution journey.

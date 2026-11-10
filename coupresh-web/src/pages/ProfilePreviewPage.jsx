@@ -1,7 +1,7 @@
 import BrandPanel from '../components/BrandPanel.jsx'
 import formatNaira from '../utils/formatNaira.js'
 
-export default function ProfilePreviewPage({ onContinue, profile }) {
+export default function ProfilePreviewPage({ error, isSubmitting, onContinue, profile }) {
   const firstName = profile.fullName.trim().split(' ')[0] || 'student'
 
   return (
@@ -38,8 +38,14 @@ export default function ProfilePreviewPage({ onContinue, profile }) {
                 <dd>{profile.institution}</dd>
               </div>
             </dl>
-            <button className="primary-button reset-button" onClick={onContinue} type="button">
-              Continue to home
+            {error && <p className="account-form-error" role="alert">{error}</p>}
+            <button
+              className="primary-button reset-button"
+              disabled={isSubmitting}
+              onClick={onContinue}
+              type="button"
+            >
+              {isSubmitting ? 'Saving your setup…' : 'Continue to home'}
             </button>
           </section>
         </div>

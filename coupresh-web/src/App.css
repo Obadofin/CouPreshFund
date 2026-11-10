@@ -534,6 +534,28 @@
   margin-top: 24px;
 }
 
+.session-loading {
+  display: grid;
+  min-height: 100svh;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.session-loading button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--green-800);
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: minmax(285px, 0.8fr) minmax(480px, 1.2fr);

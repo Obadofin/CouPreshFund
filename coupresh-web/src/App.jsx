@@ -11,7 +11,15 @@ import SignInPage from './pages/SignInPage.jsx'
 import StudentDetailsPage from './pages/StudentDetailsPage.jsx'
 import SplashScreen from './pages/SplashScreen.jsx'
 import WelcomePage from './pages/WelcomePage.jsx'
-import { clearAuthToken, loginStudent, registerStudent } from './utils/authApi.js'
+import {
+  clearAuthToken,
+  getCurrentStudent,
+  hasAuthToken,
+  loginStudent,
+  registerStudent,
+  saveStudentGoal,
+  saveStudentOnboarding,
+} from './utils/authApi.js'
 import './App.css'
 
 const initialProfile = {
@@ -40,6 +48,8 @@ function AppRoutes() {
   const [profile, setProfile] = useState(initialProfile)
   const [signupError, setSignupError] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const [isRestoringSession, setIsRestoringSession] = useState(true)
+  const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
 
   useEffect(() => {
     if (!showSplash) return undefined
@@ -47,6 +57,44 @@ function AppRoutes() {
     const timer = window.setTimeout(() => setShowSplash(false), 2400)
     return () => window.clearTimeout(timer)
   }, [showSplash])
+
+  useEffect(() => {
+    let active = true
+
+    async function restoreSession() {
+      if (!hasAuthToken()) {
+        setIsRestoringSession(false)
+        return
+      }
+
+      try {
+        const student = await getCurrentStudent()
+        if (active) {
+          setProfile({
+            ...initialProfile,
+            fullName: student.fullName,
+            email: student.email || '',
+            phone: student.phone || '',
+            ...(student.onboarding || {}),
+          })
+        }
+      } catch (error) {
+        if (!active) return
+        if (error.status === 401) {
+          clearAuthToken()
+        } else {
+          setSignupError(error.message || 'Could not restore your account. Please try again.')
+        }
+      } finally {
+        if (active) setIsRestoringSession(false)
+      }
+    }
+
+    restoreSession()
+    return () => {
+      active = false
+    }
+  }, [])
 
   function updateProfile(event) {
     const { name, value } = event.target
@@ -90,26 +138,80 @@ function AppRoutes() {
 
   async function handleSignIn(credentials) {
     const student = await loginStudent(credentials)
+    const currentStudent = await getCurrentStudent()
     setProfile({
       ...initialProfile,
-      fullName: student.fullName,
-      email: student.email || '',
-      phone: student.phone || '',
+      fullName: currentStudent.fullName || student.fullName,
+      email: currentStudent.email || '',
+      phone: currentStudent.phone || '',
+      ...(currentStudent.onboarding || {}),
     })
     navigate('/home')
   }
 
+  async function handleCompleteOnboarding() {
+    setSignupError('')
+    setIsSavingOnboarding(true)
+
+    try {
+      const onboarding = await saveStudentOnboarding(profile)
+      setProfile((currentProfile) => ({ ...currentProfile, ...onboarding }))
+      navigate('/home')
+    } catch (error) {
+      setSignupError(error.message || 'Could not save your setup. Please try again.')
+    } finally {
+      setIsSavingOnboarding(false)
+    }
+  }
+
+  async function handleSaveGoal(goal) {
+    const onboarding = await saveStudentGoal({
+      ...profile,
+      ...goal,
+    })
+    setProfile((currentProfile) => ({ ...currentProfile, ...onboarding }))
+    return onboarding
+  }
+
+  if (isRestoringSession) {
+    return <main className="session-loading" aria-live="polite">Restoring your account…</main>
+  }
+
+  if (signupError && hasAuthToken() && !profile.fullName) {
+    return (
+      <main className="session-loading" role="alert">
+        <p>{signupError}</p>
+        <button onClick={() => window.location.reload()} type="button">Try again</button>
+        <button onClick={() => { clearAuthToken(); window.location.assign('/login') }} type="button">
+          Sign in again
+        </button>
+      </main>
+    )
+  }
+
+  const dashboard = profile.fullName
+    ? <DashboardExperience onLogout={startOver} onSaveGoal={handleSaveGoal} profile={profile} />
+    : <Navigate to="/login" replace />
+
   return (
     <Routes>
-      <Route path="/home" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
-      <Route path="/money/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
-      <Route path="/growth/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
-      <Route path="/future/*" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
-      <Route path="/profile" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route path="/home" element={dashboard} />
+      <Route path="/money/*" element={dashboard} />
+      <Route path="/growth/*" element={dashboard} />
+      <Route path="/future/*" element={dashboard} />
+      <Route path="/profile" element={dashboard} />
       <Route path="/roadmap" element={<Navigate to="/future" replace />} />
-      <Route path="/goals/invite" element={<InviteGuardianPage />} />
-      <Route path="/goals" element={<GrowthUnlockPage onInvite={() => navigate('/goals/invite')} />} />
-      <Route path="/learn" element={<DashboardExperience onLogout={startOver} profile={profile} />} />
+      <Route
+        path="/goals/invite"
+        element={profile.fullName ? <InviteGuardianPage /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/goals"
+        element={profile.fullName
+          ? <GrowthUnlockPage onInvite={() => navigate('/goals/invite')} />
+          : <Navigate to="/login" replace />}
+      />
+      <Route path="/learn" element={dashboard} />
       <Route
         path="/"
         element={(
@@ -189,7 +291,12 @@ function AppRoutes() {
       <Route
         path="/signup/complete"
         element={profile.fullName && profile.contribution && profile.cadence ? (
-          <ProfilePreviewPage onContinue={() => navigate('/home')} profile={profile} />
+          <ProfilePreviewPage
+            error={signupError}
+            isSubmitting={isSavingOnboarding}
+            onContinue={handleCompleteOnboarding}
+            profile={profile}
+          />
         ) : <Navigate to="/signup/details" replace />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
