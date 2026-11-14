@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import BrandIdentity from '../components/BrandIdentity.jsx'
 
 export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
+  const location = useLocation()
+  const verifiedEmail = location.state?.verifiedEmail || ''
   const [message, setMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,6 +35,11 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
         <header className="signin-heading">
           <h1 id="signin-title">Welcome Back</h1>
           <p>Sign in to continue your journey</p>
+          {verifiedEmail && (
+            <p className="signin-success-message" role="status">
+              Email verified successfully. Please sign in to continue.
+            </p>
+          )}
         </header>
 
         <form className="signin-form" onSubmit={handleSubmit}>
@@ -48,6 +56,7 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
               placeholder="Email or Phone Number"
               required
               type="text"
+              defaultValue={verifiedEmail}
             />
           </label>
           <label className="signin-field" htmlFor="signinPassword">

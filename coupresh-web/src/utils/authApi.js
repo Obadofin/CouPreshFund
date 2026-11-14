@@ -5,6 +5,7 @@ const API_BASE_URL = configuredApiBaseUrl
     ? ''
     : '/api/v1'
 const TOKEN_STORAGE_KEY = 'coupreshfund.authToken'
+const GUARDIAN_TOKEN_STORAGE_KEY = 'coupreshfund.guardianAuthToken'
 
 function getApiBaseUrl() {
   if (!API_BASE_URL) {
@@ -33,8 +34,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, options = {}) {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+async function request(path, options = {}, tokenStorageKey = TOKEN_STORAGE_KEY) {
+  const token = localStorage.getItem(tokenStorageKey)
   const headers = new Headers(options.headers)
 
   if (options.body) {
@@ -75,6 +76,27 @@ export async function registerStudent({ fullName, email, phone, password }) {
       phone: phone || undefined,
       password,
     }),
+  })
+}
+
+export async function verifyStudentEmail({ email, code }) {
+  const result = await request('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  })
+
+  if (!result.student || typeof result.student.fullName !== 'string' || !result.token) {
+    throw new Error('The backend returned an invalid verification response. Please try again.')
+  }
+
+  localStorage.setItem(TOKEN_STORAGE_KEY, result.token)
+  return result.student
+}
+
+export async function resendStudentVerification(email) {
+  return request('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   })
 }
 
@@ -287,6 +309,55 @@ export async function revokeGuardianInvitation(invitationId) {
   return request(`/students/me/guardian-invitations/${encodeURIComponent(invitationId)}`, {
     method: 'DELETE',
   })
+}
+
+export async function registerGuardian({ fullName, email, password, inviteCode }) {
+  return request('/guardian-auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ fullName, email, password, inviteCode }),
+  })
+}
+
+export async function verifyGuardianEmail({ email, code }) {
+  const result = await request('/guardian-auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  })
+  if (!result.guardian || typeof result.guardian.fullName !== 'string' || !result.token) {
+    throw new Error('The backend returned an invalid guardian verification response.')
+  }
+  localStorage.setItem(GUARDIAN_TOKEN_STORAGE_KEY, result.token)
+  return result
+}
+
+export async function resendGuardianVerification(email) {
+  return request('/guardian-auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function loginGuardian({ email, password }) {
+  const result = await request('/guardian-auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+  if (!result.guardian || typeof result.guardian.fullName !== 'string' || !result.token) {
+    throw new Error('The backend returned an invalid guardian sign-in response.')
+  }
+  localStorage.setItem(GUARDIAN_TOKEN_STORAGE_KEY, result.token)
+  return result.guardian
+}
+
+export async function acceptGuardianInvitation(inviteCode) {
+  return request('/guardian-auth/accept-invitation', {
+    method: 'POST',
+    body: JSON.stringify({ inviteCode }),
+  }, GUARDIAN_TOKEN_STORAGE_KEY)
+}
+
+export function clearGuardianAuthToken() {
+  localStorage.removeItem(GUARDIAN_TOKEN_STORAGE_KEY)
 }
 
 export function clearAuthToken() {

@@ -135,6 +135,8 @@ function getLocalDateInputValue(date = new Date()) {
 }
 
 function HomeScreen({ dashboard, profile, navigate, showNotice }) {
+  const [learnProgress, setLearnProgress] = useState(null)
+  const [learnError, setLearnError] = useState('')
   const firstName = profile.fullName?.trim().split(/\s+/)[0] || 'Chidi'
   const savings = dashboard?.savings
   const goal = savings?.goalAmount ?? (Number(profile.goalAmount) || 0)
@@ -147,6 +149,31 @@ function HomeScreen({ dashboard, profile, navigate, showNotice }) {
     (graduationYear - new Date().getFullYear()) * 12 + 5 - new Date().getMonth()
       - (new Date().getDate() > 1 ? 1 : 0),
   )
+
+  useEffect(() => {
+    let active = true
+    Promise.all([getLearningLessons(), getStudentLessonProgress()])
+      .then(([lessons, progress]) => {
+        if (!active) return
+        const completedLessonIds = new Set(
+          progress.filter((item) => item.isCompleted).map((item) => item.lessonId),
+        )
+        setLearnProgress({
+          completed: lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length,
+          total: lessons.length,
+        })
+      })
+      .catch((requestError) => {
+        if (active) {
+          setLearnError(requestError.message || 'Could not load learning progress.')
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
     <>
       <Header trailing={<div className="home-actions"><button aria-label="Notifications" className="round-action" onClick={() => showNotice('You’re all caught up.')} type="button"><Icon name="bell" /></button><button aria-label="Open profile" className="home-avatar" onClick={() => navigate('/profile')} type="button">{firstName.slice(0, 2).toUpperCase()}</button></div>} />
@@ -160,12 +187,21 @@ function HomeScreen({ dashboard, profile, navigate, showNotice }) {
         </section>
         <SectionTitle>Your Journey</SectionTitle>
         <section className="journey-stages" aria-label="Journey stages">
-          {[['wallet', 'Save', 'On track'], ['book', 'Learn', '8/12'], ['growth', 'Grow', '2 projects'], ['cap', 'Graduate', 'In progress'], ['future', 'Launch', 'Not started']].map(([icon, title, detail], i) => (
+          {[
+            ['wallet', 'Save', 'On track'],
+            ['book', 'Learn', learnProgress
+              ? `${learnProgress.completed}/${learnProgress.total}`
+              : learnError ? 'Unavailable' : 'Loading…'],
+            ['growth', 'Grow', '2 projects'],
+            ['cap', 'Graduate', 'In progress'],
+            ['future', 'Launch', 'Not started'],
+          ].map(([icon, title, detail], i) => (
             <button className={`journey-stage${i === 2 ? ' current' : ''}`} key={title} onClick={() => navigate(i === 0 ? '/money' : i === 1 ? '/learn' : '/growth')} type="button">
               <span><Icon name={icon} /></span><strong>{title}</strong><small>{detail}</small>
             </button>
           ))}
         </section>
+        {learnError && <p className="dashboard-inline-error" role="alert">{learnError}</p>}
         <Card className="fund-card">
           <div className="card-title-row"><h2>Graduation Fund</h2><button aria-label="View My Money" className="icon-link" onClick={() => navigate('/money')} type="button"><Icon name="chevron" /></button></div>
           <p className="fund-amount">{formatNaira(saved)} <small>/ {formatNaira(goal)}</small></p>
@@ -1066,6 +1102,41 @@ function GrowthScreen({ navigate }) {
 }
 
 function FutureScreen({ navigate }) {
+  const [skillsMilestone, setSkillsMilestone] = useState(null)
+  const [skillsMilestoneError, setSkillsMilestoneError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    Promise.all([getSkillChallenges(), getStudentSkillProjects()])
+      .then(([challenges, projects]) => {
+        if (!active) return
+        const challenge = challenges.find((item) => item.id === 'digital-skills-starter')
+        const project = projects.projects.find((item) => item.challengeId === 'digital-skills-starter')
+        const completedSteps = new Set(project?.completedSteps || []).size
+        const stepCount = challenge?.stepCount || 0
+        const isCompleted = stepCount > 0 && completedSteps >= stepCount
+        const progressPercent = stepCount
+          ? Math.min(100, Math.round((completedSteps / stepCount) * 100))
+          : 0
+
+        setSkillsMilestone({
+          completedSteps,
+          isCompleted,
+          progressPercent: isCompleted ? 100 : progressPercent,
+          stepCount,
+        })
+      })
+      .catch((requestError) => {
+        if (active) {
+          setSkillsMilestoneError(requestError.message || 'Could not load milestone progress.')
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
     <>
       <Header title="My Future" />
@@ -1078,7 +1149,26 @@ function FutureScreen({ navigate }) {
         <SectionTitle>Upcoming Milestones</SectionTitle>
         <Card className="compact-list">
           <ListRow icon="wallet" title="Reach ₦200,000 saved" detail="Next savings milestone" onClick={() => navigate('/money')} />
-          <ListRow icon="book" title="Finish Skills Pathway" detail="Digital Skills • 2/5 complete" tone="purple" onClick={() => navigate('/growth')} />
+          {skillsMilestoneError && <p role="alert">{skillsMilestoneError}</p>}
+          {skillsMilestone && (
+            <div className="future-milestone-progress">
+              <ListRow
+                icon="book"
+                title="Finish Skills Pathway"
+                detail={skillsMilestone.isCompleted
+                  ? 'Digital Skills • Completed'
+                  : `Digital Skills • ${skillsMilestone.completedSteps}/${skillsMilestone.stepCount} activities complete`}
+                tone="purple"
+                action={<strong className="pathway-metric">{skillsMilestone.progressPercent}%</strong>}
+                onClick={() => navigate('/growth/challenge?challengeId=digital-skills-starter')}
+              />
+              <ProgressBar
+                label="Digital Skills milestone progress"
+                value={skillsMilestone.progressPercent}
+              />
+            </div>
+          )}
+          {!skillsMilestone && !skillsMilestoneError && <p aria-live="polite">Loading milestone progress…</p>}
         </Card>
         <button className="secondary-button full-button" onClick={() => navigate('/future/opportunities')}>Explore Opportunities</button>
       </div>

@@ -221,6 +221,12 @@
   text-align: center;
 }
 
+.dashboard-inline-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
 .experience-card {
   min-width: 0;
   padding: 16px 18px;

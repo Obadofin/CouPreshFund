@@ -29,8 +29,8 @@ export default function StudentDetailsPage({
   function handleSubmit(event) {
     event.preventDefault()
     setValidationError('')
-    if (!profile.email.trim() && !profile.phone.trim()) {
-      setValidationError('Enter an email address or phone number to create your account.')
+    if (!profile.email.trim()) {
+      setValidationError('Enter an email address to create your account.')
       return
     }
     onNext()
@@ -71,13 +71,14 @@ export default function StudentDetailsPage({
 
           <label className="account-field" htmlFor="email">
             <FieldIcon name="email" />
-            <span className="visually-hidden">Email Address</span>
+            <span className="visually-hidden">Email Address (required)</span>
             <input
               autoComplete="email"
               id="email"
               name="email"
               onChange={onChange}
-              placeholder="Email Address"
+              placeholder="Email Address (required)"
+              required
               type="email"
               value={profile.email}
             />
@@ -91,8 +92,10 @@ export default function StudentDetailsPage({
               id="phone"
               name="phone"
               onChange={onChange}
-              placeholder="Phone Number"
+              pattern={'(\\+234|0)[789][01][0-9]{8}'}
+              placeholder="Phone Number (optional)"
               type="tel"
+              title="Enter a valid Nigerian phone number, such as 08012345678 or +2348012345678"
               value={profile.phone}
             />
           </label>
@@ -112,6 +115,10 @@ export default function StudentDetailsPage({
               value={profile.password}
             />
           </label>
+
+          <p className="account-form-hint">
+            We’ll email you a verification code. Phone numbers are optional and must be valid Nigerian numbers.
+          </p>
 
           {(validationError || error) && (
             <p className="account-form-error" role="alert">{validationError || error}</p>

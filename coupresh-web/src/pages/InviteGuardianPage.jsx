@@ -26,7 +26,11 @@ export default function InviteGuardianPage() {
     getGuardianInvitations()
       .then((invitations) => {
         if (active) {
-          setInvitation(invitations.find((item) => item.status === 'pending') || null)
+          setInvitation(
+            invitations.find((item) => item.status === 'pending')
+              || invitations.find((item) => item.status === 'accepted')
+              || null,
+          )
         }
       })
       .catch((requestError) => {
@@ -82,7 +86,21 @@ export default function InviteGuardianPage() {
     }
   }
 
-  const shareMessage = `Join me on CouPreshFund Grad. Use invite code ${newCode} to connect with my savings goal. It expires on ${invitation ? formatExpiry(invitation.expiresAt) : ''}.`
+  async function copyInviteLink() {
+    if (!navigator.clipboard?.writeText) {
+      setNotice('Clipboard access is unavailable in this browser.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      setNotice('Guardian invitation link copied.')
+    } catch {
+      setNotice('Could not copy the invitation link. Please use WhatsApp to share it.')
+    }
+  }
+
+  const inviteUrl = `${window.location.origin}/guardian/invite?code=${encodeURIComponent(newCode)}`
+  const shareMessage = `Join me on CouPreshFund. Use this link to create a guardian account or sign in to an existing one and link to my profile: ${inviteUrl} Invite code: ${newCode}. It expires on ${invitation ? formatExpiry(invitation.expiresAt) : ''}.`
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`
 
   return (
@@ -102,6 +120,11 @@ export default function InviteGuardianPage() {
           <p className="invite-description">
             Create a one-time code to share with someone you trust. Codes expire after seven days.
           </p>
+          <ol className="guardian-invite-instructions">
+            <li>Share the code or WhatsApp link with your chosen guardian.</li>
+            <li>They open the link, then create and verify a guardian account or sign in to an existing guardian account.</li>
+            <li>They enter the code to link their account to yours. The code can only be used once.</li>
+          </ol>
 
           {error && <p role="alert">{error}</p>}
           {isLoading ? <p aria-live="polite">Loading invitations…</p> : invitation && (
@@ -110,28 +133,37 @@ export default function InviteGuardianPage() {
                 <div className="invite-code" aria-label={`Invite code ${newCode}`}>
                   {newCode.split('').map((digit, index) => <span key={`${digit}-${index}`}>{digit}</span>)}
                 </div>
+              ) : invitation.status === 'accepted' ? (
+                <p className="invite-expiry">
+                  Invitation accepted{invitation.guardianName ? ` by ${invitation.guardianName}` : ''}.
+                </p>
               ) : (
                 <p className="invite-expiry">An active code exists, but it is shown only once when created.</p>
               )}
-              <p className="invite-expiry">Expires {formatExpiry(invitation.expiresAt)}</p>
+              {invitation.status === 'pending' && (
+                <p className="invite-expiry">Expires {formatExpiry(invitation.expiresAt)}</p>
+              )}
               {newCode && (
-                <div className="invite-actions">
-                  <button className="invite-copy" onClick={copyCode} type="button">Copy</button>
+                <div className="invite-actions guardian-share-actions">
+                  <button className="invite-copy" onClick={copyCode} type="button">Copy code</button>
+                  <button className="invite-copy" onClick={copyInviteLink} type="button">Copy link</button>
                   <a className="invite-whatsapp" href={whatsappUrl} rel="noreferrer" target="_blank">WhatsApp</a>
                 </div>
               )}
-              <button className="text-button" onClick={revokeCode} type="button">Revoke active code</button>
+              {invitation.status === 'pending' && (
+                <button className="text-button" onClick={revokeCode} type="button">Revoke active code</button>
+              )}
             </>
           )}
 
           {!isLoading && (
             <button className="invite-copy" disabled={isCreating} onClick={createCode} type="button">
-              {isCreating ? 'Creating…' : invitation ? 'Create a new code' : 'Generate invite code'}
+              {isCreating ? 'Creating…' : invitation?.status === 'pending' ? 'Create a new code' : 'Generate invite code'}
             </button>
           )}
           <p className="invite-notice" aria-live="polite" role="status">{notice}</p>
           <p className="invite-description">
-            Invitation codes are securely stored and can be revoked. Guardian account linking and access to student data are not enabled yet.
+            The code is stored securely and can be revoked before it is used. Linking confirms the relationship only; guardian access to student dashboard data is not available yet.
           </p>
         </section>
       </div>

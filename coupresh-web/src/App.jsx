@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import CampusDetailsPage from './pages/CampusDetailsPage.jsx'
 import DashboardExperience from './pages/DashboardExperience.jsx'
+import EmailVerificationPage from './pages/EmailVerificationPage.jsx'
 import GoalSetupPage from './pages/GoalSetupPage.jsx'
+import GuardianInvitePage from './pages/GuardianInvitePage.jsx'
 import GrowthUnlockPage from './pages/GrowthUnlockPage.jsx'
 import InviteGuardianPage from './pages/InviteGuardianPage.jsx'
 import ProfilePreviewPage from './pages/ProfilePreviewPage.jsx'
@@ -17,7 +19,9 @@ import {
   getCurrentStudent,
   hasAuthToken,
   loginStudent,
+  resendStudentVerification,
   registerStudent,
+  verifyStudentEmail,
   saveStudentGoal,
   saveStudentOnboarding,
 } from './utils/authApi.js'
@@ -42,12 +46,17 @@ const graduationYears = Array.from(
   { length: 7 },
   (_, index) => new Date().getFullYear() + index + 1,
 )
+const PENDING_VERIFICATION_STORAGE_KEY = 'coupreshfund.pendingVerificationEmail'
 
 function AppRoutes() {
   const navigate = useNavigate()
   const [showSplash, setShowSplash] = useState(() => window.location.pathname === '/')
   const [profile, setProfile] = useState(initialProfile)
   const [signupError, setSignupError] = useState('')
+  const [verificationNotice, setVerificationNotice] = useState('')
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(
+    () => sessionStorage.getItem(PENDING_VERIFICATION_STORAGE_KEY) || '',
+  )
   const [isRegistering, setIsRegistering] = useState(false)
   const [isRestoringSession, setIsRestoringSession] = useState(true)
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
@@ -104,6 +113,8 @@ function AppRoutes() {
 
   function startOver() {
     clearAuthToken()
+    sessionStorage.removeItem(PENDING_VERIFICATION_STORAGE_KEY)
+    setPendingVerificationEmail('')
     setProfile(initialProfile)
     navigate('/')
   }
@@ -112,14 +123,30 @@ function AppRoutes() {
     setSignupError('')
     setIsRegistering(true)
 
-    let registered = false
     try {
-      await registerStudent(profile)
-      registered = true
-      const student = await loginStudent({
-        emailOrPhone: profile.email || profile.phone,
-        password: profile.password,
-      })
+      const result = await registerStudent(profile)
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        fullName: result.student.fullName,
+        email: result.student.email || currentProfile.email,
+        phone: result.student.phone || currentProfile.phone,
+      }))
+      setPendingVerificationEmail(result.student.email)
+      sessionStorage.setItem(PENDING_VERIFICATION_STORAGE_KEY, result.student.email)
+      setVerificationNotice(result.emailSent === false ? result.message : '')
+      navigate('/signup/verify-email')
+    } catch (error) {
+      setSignupError(error.message || 'Account creation failed. Please try again.')
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
+  async function handleEmailVerification(code) {
+    setSignupError('')
+    setIsRegistering(true)
+    try {
+      const student = await verifyStudentEmail({ email: pendingVerificationEmail, code })
       setProfile((currentProfile) => ({
         ...currentProfile,
         fullName: student.fullName,
@@ -127,11 +154,12 @@ function AppRoutes() {
         phone: student.phone || currentProfile.phone,
         password: '',
       }))
+      setPendingVerificationEmail('')
+      sessionStorage.removeItem(PENDING_VERIFICATION_STORAGE_KEY)
+      setVerificationNotice('')
       navigate('/signup/campus')
     } catch (error) {
-      setSignupError(registered
-        ? `Your account was created, but automatic sign-in failed. Please sign in from the login page. ${error.message}`
-        : error.message || 'Account creation failed. Please try again.')
+      setSignupError(error.message || 'Email verification failed. Please try again.')
     } finally {
       setIsRegistering(false)
     }
@@ -196,7 +224,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/home" element={dashboard} />
+      <Route path="/guardian/invite" element={<GuardianInvitePage />} />
       <Route path="/money/*" element={dashboard} />
       <Route path="/growth/*" element={dashboard} />
       <Route path="/future/*" element={dashboard} />
@@ -213,7 +243,6 @@ function AppRoutes() {
           : <Navigate to="/login" replace />}
       />
       <Route path="/learn" element={dashboard} />
-      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route
         path="/"
         element={(
@@ -253,8 +282,21 @@ function AppRoutes() {
         )}
       />
       <Route
+        path="/signup/verify-email"
+        element={pendingVerificationEmail ? (
+          <EmailVerificationPage
+            email={pendingVerificationEmail}
+            error={signupError}
+            notice={verificationNotice}
+            isSubmitting={isRegistering}
+            onResend={() => resendStudentVerification(pendingVerificationEmail)}
+            onVerify={handleEmailVerification}
+          />
+        ) : <Navigate to="/signup/details" replace />}
+      />
+      <Route
         path="/signup/campus"
-        element={profile.fullName ? (
+        element={hasAuthToken() && profile.fullName ? (
           <CampusDetailsPage
             graduationYears={graduationYears}
             onBack={() => navigate('/signup/details')}
@@ -266,7 +308,7 @@ function AppRoutes() {
       />
       <Route
         path="/signup/goal"
-        element={profile.institution ? (
+        element={hasAuthToken() && profile.institution ? (
           <GoalSetupPage
             onBack={() => navigate('/signup/campus')}
             onChange={updateProfile}
@@ -277,7 +319,7 @@ function AppRoutes() {
       />
       <Route
         path="/signup/savings-plan"
-        element={profile.goalAmount ? (
+        element={hasAuthToken() && profile.goalAmount ? (
           <SavingsPlanPage
             onAmountChange={(value) => setProfile((currentProfile) => ({
               ...currentProfile,
@@ -292,7 +334,7 @@ function AppRoutes() {
       />
       <Route
         path="/signup/complete"
-        element={profile.fullName && profile.contribution && profile.cadence ? (
+        element={hasAuthToken() && profile.fullName && profile.contribution && profile.cadence ? (
           <ProfilePreviewPage
             error={signupError}
             isSubmitting={isSavingOnboarding}

@@ -8,7 +8,7 @@ const policySections = [
       'When you create an account, we collect your name, email address, password, and, if you choose to provide it, your phone number. We store a protected password hash rather than your readable password. We also process email verification codes to confirm account ownership.',
       'If you use the student features, we collect the education and planning details you enter, such as your institution, course, study level, expected graduation year, savings goal, savings purpose, and planned contribution.',
       'Features you use may also create records of budgets, expenses, self-reported savings contributions, learning progress, challenge progress, points, saved opportunities, and guardian invitation status. Contributions and expenses are self-reported; CouPreshFund does not verify deposits or move money.',
-      'The current guardian invitation feature creates and tracks invitation codes only. It does not create guardian accounts, accept invitations, or give guardians access to student data.',
+      'If a student invites a guardian, we process the invitation code and the guardian’s account details to verify the guardian and record the relationship between the accounts. Linking does not give guardians access to the student’s profile or dashboard data.',
     ],
   },
   {
@@ -21,7 +21,7 @@ const policySections = [
   {
     title: 'How information is shared',
     paragraphs: [
-      'We use service providers to operate the app. Render hosts the application and database. Brevo processes transactional email, including account verification messages. These providers receive information needed to provide their services and process it under their own privacy and security terms.',
+      'We use service providers to operate the app. Render hosts the application and database. Google Apps Script and Google MailApp send transactional email, including account verification messages. These providers receive information needed to provide their services and process it under their own privacy and security terms.',
       'We may also disclose information when required by law, to protect users or the service, or as part of a business transfer where permitted by applicable law. We do not share student profiles with schools, guardians, scholarship providers, or advertisers through the current app features.',
       'Our service providers may process information in countries other than Nigeria. Where cross-border processing occurs, it is subject to applicable data-protection requirements.',
     ],
@@ -29,7 +29,7 @@ const policySections = [
   {
     title: 'Browser storage and security',
     paragraphs: [
-      'The web app stores an authentication token in your browser’s local storage to keep you signed in and temporarily stores the email awaiting verification in session storage. You can clear these values through your browser, though you may need to sign in again.',
+      'The web app stores student and guardian authentication tokens in your browser’s local storage to keep you signed in and temporarily stores the email awaiting verification in session storage. You can clear these values through your browser, though you may need to sign in again.',
       'We use reasonable safeguards designed to protect personal information. No online service or storage system can be guaranteed completely secure.',
     ],
   },

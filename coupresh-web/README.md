@@ -53,7 +53,9 @@ The shared request helper is `src/utils/authApi.js`. It uses `/api/v1` by defaul
 
 | Endpoint | Frontend behavior |
 | --- | --- |
-| `POST /api/v1/auth/register` | Sends the student's name, password, and supplied email and/or phone number. After registration, the frontend signs in automatically. |
+| `POST /api/v1/auth/register` | Creates a pending student account and emails a verification code. |
+| `POST /api/v1/auth/verify-email` | Verifies the student's email address and activates the account. |
+| `POST /api/v1/auth/resend-verification` | Resends the student's email verification code. |
 | `POST /api/v1/auth/login` | Signs in with an email address or phone number and password. |
 | `GET /api/v1/auth/me` | Restores the signed-in student and saved onboarding data after a page reload. |
 | `PUT /api/v1/students/me/onboarding` | Saves school, graduation goal, purpose, and savings plan when onboarding is completed. |
@@ -83,15 +85,19 @@ The shared request helper is `src/utils/authApi.js`. It uses `/api/v1` by defaul
 | `GET /api/v1/students/me/guardian-invitations` | Loads invitation status and expiration dates. |
 | `POST /api/v1/students/me/guardian-invitations` | Creates a one-time code to share with a guardian. |
 | `DELETE /api/v1/students/me/guardian-invitations/:invitationId` | Revokes an active invitation code. |
+| `POST /api/v1/guardian-auth/register` | Creates a guardian account with an invite code and sends email verification. |
+| `POST /api/v1/guardian-auth/verify-email` | Verifies a guardian account and links the invite code. |
+| `POST /api/v1/guardian-auth/login` | Signs in an existing guardian account. |
+| `POST /api/v1/guardian-auth/accept-invitation` | Links a signed-in guardian account using a student invite code. |
 | `GET /api/v1/health` | Backend health endpoint; the frontend does not call it automatically. |
 
-The authentication token is stored in browser local storage under `coupreshfund.authToken` and is included in authenticated requests. The backend issues a token that expires after one day. Registration and sign-in errors are displayed in the interface.
+Student authentication is stored in browser local storage under `coupreshfund.authToken`; guardian authentication uses a separate `coupreshfund.guardianAuthToken`. Backend tokens expire after one day. Registration and sign-in errors are displayed in the interface.
 
 ## Product screens and data status
 
 The authentication token is restored from `/api/v1/auth/me` on reload, and dashboard/product routes require a signed-in student. Onboarding data is saved at completion and restored with the student profile. The My Money goals form updates the saved graduation target and purpose; the budget screen loads and saves amounts independently for each period, records expenses, and displays the actual category breakdown and remaining budget.
 
-Self-reported savings and expenses do not initiate, verify, or move money. Learning Hub progress, skills challenge steps, earned points, saved opportunities, and invite-code status are persisted by the backend. Opportunity entries are sample listings and should be verified with providers. Guardian invite acceptance, guardian accounts, and guardian access to student data are not enabled yet.
+Self-reported savings and expenses do not initiate, verify, or move money. Learning Hub progress, skills challenge steps, earned points, saved opportunities, and invite-code status are persisted by the backend. Opportunity entries are sample listings and should be verified with providers. Guardians can create and verify an account or sign in to an existing guardian account to redeem a student invite code. Linking records the relationship only; guardians cannot view student data in this release.
 
 ## Main routes
 
@@ -99,6 +105,7 @@ Self-reported savings and expenses do not initiate, verify, or move money. Learn
 | --- | --- |
 | `/` | Welcome and onboarding |
 | `/privacy` | Privacy Policy |
+| `/guardian/invite?code=123456` | Guardian account creation/sign-in and invite-code linking |
 | `/login` | Sign in |
 | `/signup/details` | Student account creation |
 | `/signup/campus` | Institution and graduation details |
