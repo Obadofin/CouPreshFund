@@ -27,6 +27,7 @@ const createTestApp = () => {
     points: [],
     opportunities: [],
     invitations: [],
+    guardians: [],
   };
   const matches = (item, where) => Object.entries(where).every(([key, value]) => {
     if (value && typeof value === 'object' && value[Op.or]) {
@@ -50,6 +51,9 @@ const createTestApp = () => {
   const models = {
     StudentModel: {
       findByPk: async (id) => (id === studentId ? student : null),
+    },
+    GuardianModel: {
+      findAll: async ({ where }) => state.guardians.filter((item) => matches(item, where)),
     },
     ChallengeProgressModel: {
       findAll: async ({ where }) => state.challenges.filter((item) => matches(item, where)),
@@ -99,6 +103,7 @@ const createTestApp = () => {
           id: `invite-${state.invitations.length + 1}`,
           ...values,
           createdAt: new Date(),
+          guardianId: null,
           revokedAt: null,
           acceptedAt: null,
         };

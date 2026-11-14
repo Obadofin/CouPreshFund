@@ -10,11 +10,11 @@ Express API backed by PostgreSQL and Sequelize.
 ## Local setup
 
 1. Create a PostgreSQL database and user.
-2. Copy `.env.example` to `.env` and set your local database credentials and a private JWT secret.
+2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Google Apps Script settings for email verification.
 3. Install dependencies with `npm ci`.
 4. Start the API with `npm start`.
 
-The server validates its required environment variables before starting. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
+The server validates its required database and JWT environment variables before starting. Email registration requires an HTTPS Google Apps Script Web App URL and a shared secret. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
 
 Never commit `.env` or use credentials copied from another branch. Keep `.env.example` limited to placeholder values.
 
@@ -30,6 +30,8 @@ Never commit `.env` or use credentials copied from another branch. Keep `.env.ex
 | `DB_HOST` | Yes | PostgreSQL host |
 | `DB_PORT` | Yes | PostgreSQL port |
 | `JWT_SECRET` | Yes | Private secret used to sign authentication tokens |
+| `GOOGLE_SCRIPT_URL` | For email registration | HTTPS URL of the deployed Google Apps Script Web App |
+| `EMAIL_SECRET` | For email registration | Shared secret verified by the Google Apps Script; keep private |
 
 Use a long, randomly generated `JWT_SECRET` in local and deployed environments.
 For deployment, set `CORS_ORIGINS` to the exact frontend origin (for example, `https://your-site.onrender.com`) and include local origins only if local browser development is needed. Native mobile API requests do not rely on browser CORS.
@@ -42,7 +44,9 @@ All routes are versioned under `/api/v1`.
 | --- | --- | --- |
 | `GET` | `/api/v1/health` | Liveness check; confirms the API process is responding |
 | `GET` | `/api/v1/health/ready` | Readiness check; confirms PostgreSQL is reachable |
-| `POST` | `/api/v1/auth/register` | Register a student with email or phone |
+| `POST` | `/api/v1/auth/register` | Create a pending student account and email a verification code |
+| `POST` | `/api/v1/auth/verify-email` | Verify an email with its six-digit code and activate the account |
+| `POST` | `/api/v1/auth/resend-verification` | Resend a code to a pending account; limited to one email per minute |
 | `POST` | `/api/v1/auth/login` | Sign in and receive a JWT |
 | `GET` | `/api/v1/auth/me` | Return the authenticated student; requires a Bearer token |
 | `GET` | `/api/v1/students/me/onboarding` | Return the authenticated student's saved onboarding profile |
@@ -73,8 +77,19 @@ All routes are versioned under `/api/v1`.
 | `GET` | `/api/v1/students/me/guardian-invitations` | List invitation status and expiration dates |
 | `POST` | `/api/v1/students/me/guardian-invitations` | Create a one-time guardian invite code |
 | `DELETE` | `/api/v1/students/me/guardian-invitations/:invitationId` | Revoke an active invite code |
+| `POST` | `/api/v1/guardian-auth/register` | Create a guardian account using a student invite code and send email verification |
+| `POST` | `/api/v1/guardian-auth/verify-email` | Verify a new guardian account and link the invitation |
+| `POST` | `/api/v1/guardian-auth/resend-verification` | Resend guardian email verification code |
+| `POST` | `/api/v1/guardian-auth/login` | Sign in to an existing verified guardian account |
+| `POST` | `/api/v1/guardian-auth/accept-invitation` | Link a signed-in guardian account using a student's invite code |
 
 Errors use JSON responses with a `message` field. Internal server errors do not return implementation or database details.
+
+Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by Google Apps Script to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
+
+Set `GOOGLE_SCRIPT_URL` and `EMAIL_SECRET` in the backend environment. The backend sends a JSON `POST` containing `secret`, `to`, `subject`, `text`, and `html`. Configure the Apps Script `doPost` handler to parse that JSON, compare `secret` against a script property (never hard-code or return the secret), and send the message using the script owner's authorized Gmail account. Have the handler return JSON with `success: true` after delivery, or `success: false`/`error` if delivery fails. Deploy the Web App so the backend can invoke it, and keep its URL and shared secret out of frontend code and logs.
+
+For hosted QA, use separate QA frontend/backend services and a separate QA database in Render. Configure the QA backend with its own `CORS_ORIGINS`, QA database variables, `GOOGLE_SCRIPT_URL`, and `EMAIL_SECRET`; point the QA frontend at the QA backend. Testers register with inboxes they can access and receive the OTP by email. Keep production and QA data isolated, and store the Web App URL and shared secret only in backend environment variables, never in the frontend.
 
 The onboarding request uses the frontend fields `institution`, `course`, `level`, `graduationYear`, `goalAmount`, `purpose`, `contribution`, and `cadence`. It requires all fields; amounts are whole Naira values and cadence is `weekly`, `monthly`, or `yearly`.
 
@@ -90,9 +105,9 @@ Skills challenge progress is stored per student and persists the exact completed
 
 Opportunity records in this release are sample listings; verify details with their providers. Students can save and remove listings.
 
-Guardian invite codes are random, expire after seven days, and are stored as hashes. Creating a replacement revokes the prior pending code. The current API supports issuing, listing, and revoking codes only; accepting invitations, guardian accounts, and access to student data are not enabled.
+Guardian invite codes are random, expire after seven days, and are stored as hashes. Creating a replacement revokes the prior pending code. Guardians can create an account with the code and verify their email, or sign in to an existing verified guardian account and redeem the code at `/guardian/invite?code=...`. Redemption is one-time and recorded on the invitation. Guardian and student access tokens are separate; linking confirms the relationship only. Guardians do not have access to student profile or dashboard data in this release.
 
-The `StudentProfile`, `SavingsContribution`, `StudentBudget`, `StudentExpense`, `StudentLessonProgress`, `StudentChallengeProgress`, `StudentPointTransaction`, `GuardianInvitation`, and `StudentOpportunitySave` Sequelize models are registered at startup. `sequelize.sync()` creates their PostgreSQL tables automatically if they do not exist. Since it does not alter existing tables when model columns change, startup also applies a narrow migration for the challenge `completedSteps` column; use deliberate migrations for future schema changes.
+The `StudentProfile`, `SavingsContribution`, `StudentBudget`, `StudentExpense`, `StudentLessonProgress`, `StudentChallengeProgress`, `StudentPointTransaction`, `Guardian`, `GuardianInvitation`, and `StudentOpportunitySave` Sequelize models are registered at startup. `sequelize.sync()` creates their PostgreSQL tables automatically if they do not exist. Since it does not alter existing tables when model columns change, startup also applies narrow migrations for the challenge `completedSteps` and invitation `guardianId` columns; use deliberate migrations for future schema changes.
 
 ## Checks
 

@@ -22,8 +22,8 @@ const registerRules = [
     .notEmpty().withMessage('Full name is required')
     .isLength({ min: 2, max: 100 }).withMessage('Full name must be 2 to 100 characters'),
   body('email')
-    .optional({ values: 'falsy' })
     .trim()
+    .notEmpty().withMessage('Email address is required')
     .isEmail().withMessage('Enter a valid email address')
     .normalizeEmail(),
   body('phone')
@@ -35,11 +35,30 @@ const registerRules = [
     .matches(/[A-Za-z]/).withMessage('Password must contain a letter')
     .matches(/\d/).withMessage('Password must contain a number'),
   body().custom((value, { req }) => {
-    if (!req.body.email && !req.body.phone) {
-      throw new Error('Either email or phone is required');
+    if (!req.body.email) {
+      throw new Error('Email address is required');
     }
     return true;
   }),
+  handleValidation,
+];
+
+const verifyEmailRules = [
+  body('email')
+    .trim()
+    .isEmail().withMessage('Enter a valid email address')
+    .normalizeEmail(),
+  body('code')
+    .trim()
+    .matches(/^\d{6}$/).withMessage('Enter the six-digit verification code'),
+  handleValidation,
+];
+
+const resendVerificationRules = [
+  body('email')
+    .trim()
+    .isEmail().withMessage('Enter a valid email address')
+    .normalizeEmail(),
   handleValidation,
 ];
 
@@ -173,6 +192,8 @@ const lessonProgressRules = [
 
 module.exports = {
   registerRules,
+  verifyEmailRules,
+  resendVerificationRules,
   loginRules,
   onboardingRules,
   contributionRules,

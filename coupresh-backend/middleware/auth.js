@@ -11,6 +11,9 @@ const authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type === 'guardian') {
+      return res.status(403).json({ message: 'Student account required' });
+    }
     req.studentId = decoded.id;
     next();
   } catch (error) {

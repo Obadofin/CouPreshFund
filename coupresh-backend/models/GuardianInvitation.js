@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Student = require('./Student');
+const Guardian = require('./Guardian');
 
 const GuardianInvitation = sequelize.define('GuardianInvitation', {
   id: {
@@ -13,6 +14,12 @@ const GuardianInvitation = sequelize.define('GuardianInvitation', {
     allowNull: false,
     references: { model: Student, key: 'id' },
     onDelete: 'CASCADE',
+  },
+  guardianId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: { model: Guardian, key: 'id' },
+    onDelete: 'SET NULL',
   },
   codeHash: {
     type: DataTypes.STRING(64),
@@ -40,5 +47,10 @@ Student.hasMany(GuardianInvitation, {
   foreignKey: 'studentId',
 });
 GuardianInvitation.belongsTo(Student, { foreignKey: 'studentId' });
+Guardian.hasMany(GuardianInvitation, {
+  as: 'studentLinks',
+  foreignKey: 'guardianId',
+});
+GuardianInvitation.belongsTo(Guardian, { foreignKey: 'guardianId' });
 
 module.exports = GuardianInvitation;

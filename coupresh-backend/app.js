@@ -9,8 +9,10 @@ require('./models/StudentLessonProgress');
 require('./models/StudentChallengeProgress');
 require('./models/StudentPointTransaction');
 require('./models/GuardianInvitation');
+require('./models/Guardian');
 require('./models/StudentOpportunitySave');
 const authRoutes = require('./routes/auth');
+const createGuardianAuthRouter = require('./routes/guardianAuth');
 const learningRoutes = require('./routes/learning');
 const createSkillsRouter = require('./routes/skills');
 const createPointsRouter = require('./routes/points');
@@ -26,6 +28,7 @@ const defaultAllowedOrigins = [
 const createApp = ({
   database = sequelize,
   studentModels,
+  guardianModels,
   allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
     : defaultAllowedOrigins,
@@ -57,11 +60,15 @@ const createApp = ({
 
   app.use(express.json());
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/guardian-auth', createGuardianAuthRouter(guardianModels));
   app.use('/api/v1/learning', learningRoutes);
   app.use('/api/v1', createSkillsRouter(studentModels));
   app.use('/api/v1/students', createPointsRouter(studentModels));
   app.use('/api/v1/opportunities', createOpportunitiesRouter(studentModels));
-  app.use('/api/v1/students', createGuardianInvitationsRouter(studentModels));
+  app.use('/api/v1/students', createGuardianInvitationsRouter({
+    ...studentModels,
+    ...guardianModels,
+  }));
   app.use('/api/v1/students', createStudentRouter(studentModels));
 
   app.get('/api/v1/health', (req, res) => {

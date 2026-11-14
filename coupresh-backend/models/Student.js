@@ -16,6 +16,28 @@ const Student = sequelize.define('Student', {
     unique: true,
     validate: { isEmail: true },
   },
+  emailVerified: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  verificationCodeHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  verificationExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  verificationSentAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  verificationAttempts: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
   phone: {
     type: DataTypes.STRING,
     unique: true,

@@ -1,6 +1,7 @@
 const { createHash, randomInt } = require('node:crypto');
 const express = require('express');
 const Student = require('../models/Student');
+const Guardian = require('../models/Guardian');
 const GuardianInvitation = require('../models/GuardianInvitation');
 const authenticate = require('../middleware/auth');
 
@@ -9,6 +10,7 @@ const hashCode = (code) => createHash('sha256').update(code).digest('hex');
 
 const createGuardianInvitationsRouter = ({
   StudentModel = Student,
+  GuardianModel = Guardian,
   InvitationModel = GuardianInvitation,
 } = {}) => {
   const router = express.Router();
@@ -23,10 +25,16 @@ const createGuardianInvitationsRouter = ({
         order: [['createdAt', 'DESC']],
         limit: 20,
       });
+      const guardianIds = [...new Set(invitations.map((item) => item.guardianId).filter(Boolean))];
+      const guardians = guardianIds.length
+        ? await GuardianModel.findAll({ where: { id: guardianIds } })
+        : [];
+      const guardianNames = new Map(guardians.map((guardian) => [guardian.id, guardian.fullName]));
       const now = Date.now();
       res.json({
         invitations: invitations.map((item) => ({
           id: item.id,
+          guardianName: item.guardianId ? guardianNames.get(item.guardianId) || null : null,
           expiresAt: item.expiresAt,
           createdAt: item.createdAt,
           status: item.revokedAt
@@ -56,6 +64,7 @@ const createGuardianInvitationsRouter = ({
             studentId: student.id,
             revokedAt: null,
             acceptedAt: null,
+            guardianId: null,
           },
         },
       );
@@ -104,6 +113,7 @@ const createGuardianInvitationsRouter = ({
             studentId: student.id,
             revokedAt: null,
             acceptedAt: null,
+            guardianId: null,
           },
         },
       );

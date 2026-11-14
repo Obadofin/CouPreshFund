@@ -9,7 +9,12 @@ process.env.DB_PORT = process.env.DB_PORT || '5432';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
 const createApp = require('../app');
-const { ensureStudentChallengeStepsColumn, startServer } = require('../server');
+const {
+  ensureGuardianInvitationGuardianColumn,
+  ensureStudentChallengeStepsColumn,
+  ensureStudentVerificationColumns,
+  startServer,
+} = require('../server');
 
 test('authenticates and synchronizes PostgreSQL before listening', async () => {
   const steps = [];
@@ -73,5 +78,49 @@ test('adds the completed challenge steps column to existing databases', async ()
   assert.deepEqual(calls, [
     ['describe', 'StudentChallengeProgresses'],
     ['add', 'StudentChallengeProgresses', 'completedSteps', false],
+  ]);
+});
+
+test('adds the email verification columns to existing student tables', async () => {
+  const calls = [];
+  await ensureStudentVerificationColumns({
+    getQueryInterface: () => ({
+      describeTable: async (table) => {
+        calls.push(['describe', table]);
+        return { id: {}, email: {}, phone: {} };
+      },
+      addColumn: async (table, column, options) => {
+        calls.push(['add', table, column, options.allowNull, options.defaultValue]);
+      },
+    }),
+  });
+
+  assert.deepEqual(calls, [
+    ['describe', 'Students'],
+    ['add', 'Students', 'emailVerified', false, true],
+    ['add', 'Students', 'verificationCodeHash', true, undefined],
+    ['add', 'Students', 'verificationExpiresAt', true, undefined],
+    ['add', 'Students', 'verificationSentAt', true, undefined],
+    ['add', 'Students', 'verificationAttempts', false, 0],
+  ]);
+});
+
+test('adds the guardian relationship column to existing invitation tables', async () => {
+  const calls = [];
+  await ensureGuardianInvitationGuardianColumn({
+    getQueryInterface: () => ({
+      describeTable: async (table) => {
+        calls.push(['describe', table]);
+        return { id: {}, studentId: {} };
+      },
+      addColumn: async (table, column, options) => {
+        calls.push(['add', table, column, options.allowNull, options.onDelete]);
+      },
+    }),
+  });
+
+  assert.deepEqual(calls, [
+    ['describe', 'GuardianInvitations'],
+    ['add', 'GuardianInvitations', 'guardianId', true, 'SET NULL'],
   ]);
 });
