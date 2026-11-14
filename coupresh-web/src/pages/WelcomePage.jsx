@@ -1,4 +1,5 @@
 import './WelcomePage.css'
+import { Link } from 'react-router-dom'
 
 export default function WelcomePage({ onStart, onSignIn }) {
   return (
@@ -35,6 +36,7 @@ export default function WelcomePage({ onStart, onSignIn }) {
         <button className="onboarding-login" onClick={onSignIn} type="button">
           I already have an account
         </button>
+        <Link className="onboarding-privacy-link" to="/privacy">Privacy Policy</Link>
       </footer>
     </main>
   )

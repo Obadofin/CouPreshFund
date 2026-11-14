@@ -172,7 +172,22 @@
   cursor: pointer;
 }
 
+.onboarding-privacy-link {
+  min-height: 25px;
+  padding: 4px 8px;
+  color: #66746d;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .onboarding-splash button:focus-visible {
+  outline: 2px solid #008b59;
+  outline-offset: 3px;
+}
+
+.onboarding-privacy-link:focus-visible {
+  border-radius: 2px;
   outline: 2px solid #008b59;
   outline-offset: 3px;
 }

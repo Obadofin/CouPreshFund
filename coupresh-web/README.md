@@ -98,6 +98,7 @@ Self-reported savings and expenses do not initiate, verify, or move money. Learn
 | Route | Screen |
 | --- | --- |
 | `/` | Welcome and onboarding |
+| `/privacy` | Privacy Policy |
 | `/login` | Sign in |
 | `/signup/details` | Student account creation |
 | `/signup/campus` | Institution and graduation details |

@@ -6,6 +6,7 @@ import GoalSetupPage from './pages/GoalSetupPage.jsx'
 import GrowthUnlockPage from './pages/GrowthUnlockPage.jsx'
 import InviteGuardianPage from './pages/InviteGuardianPage.jsx'
 import ProfilePreviewPage from './pages/ProfilePreviewPage.jsx'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
 import SavingsPlanPage from './pages/SavingsPlanPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import StudentDetailsPage from './pages/StudentDetailsPage.jsx'
@@ -212,6 +213,7 @@ function AppRoutes() {
           : <Navigate to="/login" replace />}
       />
       <Route path="/learn" element={dashboard} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route
         path="/"
         element={(
