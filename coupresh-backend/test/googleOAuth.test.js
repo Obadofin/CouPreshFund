@@ -41,6 +41,7 @@ test('Google OAuth setup protects authorization, validates state, and exposes on
   const redirectUri = 'https://corporatefund-i-backend.onrender.com/auth/google/callback';
   const setupSecret = 'test-setup-secret-at-least-32-bytes-long';
   let tokenExchangeCode;
+  let tokenExchangeError;
   let generatedAuthOptions;
   let sentEmail;
 
@@ -73,6 +74,7 @@ test('Google OAuth setup protects authorization, validates state, and exposes on
 
     async getToken(code) {
       tokenExchangeCode = code;
+      if (tokenExchangeError) throw tokenExchangeError;
       return {
         tokens: {
           access_token: 'never-display-this-access-token',
@@ -146,6 +148,45 @@ test('Google OAuth setup protects authorization, validates state, and exposes on
       assert.equal(testEmail.status, 200);
       assert.equal(sentEmail.to, 'recipient@example.test');
       assert.equal(sentEmail.subject, 'CouPreshFund Gmail API connectivity test');
+
+      const retryAuthorization = await fetch(`${baseUrl}/auth/google/authorize`, {
+        method: 'POST',
+        headers: { 'x-oauth-setup-secret': setupSecret },
+      });
+      const retryAuthorizationResult = await retryAuthorization.json();
+      const retryState = new URL(retryAuthorizationResult.authorizationUrl).searchParams.get('state');
+      const retryStateCookie = retryAuthorization.headers.get('set-cookie').split(';')[0];
+      tokenExchangeError = Object.assign(
+        new Error(
+          `OAuth failed: client_secret=test-client-secret OAUTH_SETUP_SECRET=${setupSecret} code=private-code access_token=private-access refresh_token=private-refresh`,
+        ),
+        { response: { status: 400 } },
+      );
+      const originalConsoleError = console.error;
+      const diagnosticLogs = [];
+      console.error = (...args) => diagnosticLogs.push(args);
+      try {
+        const failedCallback = await fetch(
+          `${baseUrl}/auth/google/callback?code=private-code&state=${encodeURIComponent(retryState)}`,
+          { headers: { Cookie: retryStateCookie } },
+        );
+        assert.equal(failedCallback.status, 502);
+      } finally {
+        console.error = originalConsoleError;
+      }
+
+      const diagnosticLog = JSON.stringify(diagnosticLogs);
+      assert.match(diagnosticLog, /Google OAuth token exchange failed/);
+      assert.match(diagnosticLog, /400/);
+      for (const secret of [
+        'test-client-secret',
+        setupSecret,
+        'private-code',
+        'private-access',
+        'private-refresh',
+      ]) {
+        assert.equal(diagnosticLog.includes(secret), false);
+      }
     });
   } finally {
     googleapis.google.auth.OAuth2 = originalOAuth2;

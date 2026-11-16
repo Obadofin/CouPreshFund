@@ -7,6 +7,11 @@ const STATE_COOKIE = 'coupresh_google_oauth_state';
 const STATE_TTL_SECONDS = 10 * 60;
 const SETUP_SECRET_HEADER = 'x-oauth-setup-secret';
 const SETUP_SECRET_MIN_BYTES = 32;
+const OAUTH_CLIENT_ENV_VARS = [
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_REDIRECT_URI',
+];
 
 const hasStrongSetupSecret = (env = process.env) => (
   typeof env.OAUTH_SETUP_SECRET === 'string'
@@ -19,6 +24,50 @@ const safelyMatches = (expected, supplied) => {
   const suppliedBuffer = Buffer.from(supplied, 'utf8');
   return expectedBuffer.length === suppliedBuffer.length
     && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+};
+
+const getMissingOAuthConfig = () => OAUTH_CLIENT_ENV_VARS.filter((name) => (
+  typeof process.env[name] !== 'string' || process.env[name].trim().length === 0
+));
+
+const redactSensitiveText = (value, sensitiveValues) => {
+  let text = value;
+  for (const secret of sensitiveValues) {
+    text = text.split(secret).join('[REDACTED]');
+  }
+  return text
+    .replace(/((?:"|')?(?:authorization[\s_-]*code|code|state|client[\s_-]*secret|client[\s_-]*id|access[\s_-]*token|refresh[\s_-]*token|oauth[\s_-]*setup[\s_-]*secret)(?:"|')?\s*[:=]\s*["']?)[^"'&\s,}]+/gi, '$1[REDACTED]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
+};
+
+const getSafeErrorDetails = (error, req) => {
+  const sensitiveValues = [
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.OAUTH_SETUP_SECRET,
+    process.env.GOOGLE_REFRESH_TOKEN,
+    req.get(SETUP_SECRET_HEADER),
+    req.query?.code,
+    req.query?.state,
+    getCookie(req, STATE_COOKIE),
+  ].filter((value) => typeof value === 'string' && value.length > 0);
+  const message = redactSensitiveText(
+    typeof error?.message === 'string' ? error.message : 'Unknown error',
+    sensitiveValues,
+  );
+
+  const details = {
+    name: redactSensitiveText(typeof error?.name === 'string' ? error.name : 'Error', sensitiveValues),
+    message,
+  };
+  const status = Number(error?.response?.status);
+  if (Number.isInteger(status) && status >= 100 && status <= 599) {
+    details.httpStatus = status;
+  }
+  return details;
+};
+
+const logOAuthFailure = (stage, error, req) => {
+  console.error(`Google OAuth ${stage} failed:`, getSafeErrorDetails(error, req));
 };
 
 const setPrivateResponseHeaders = (res) => {
@@ -51,12 +100,17 @@ const getCookie = (request, name) => {
 
 const requireSetupSecret = (req, res, next) => {
   if (!process.env.OAUTH_SETUP_SECRET) {
+    console.warn('Google OAuth setup authorization rejected: OAUTH_SETUP_SECRET is not configured');
     return res.status(404).json({ message: 'OAuth setup is disabled' });
   }
   if (!hasStrongSetupSecret()) {
+    console.warn('Google OAuth setup authorization rejected: OAUTH_SETUP_SECRET is shorter than 32 bytes');
     return res.status(503).json({ message: 'OAUTH_SETUP_SECRET must be at least 32 bytes' });
   }
   if (!safelyMatches(process.env.OAUTH_SETUP_SECRET, req.get(SETUP_SECRET_HEADER))) {
+    console.warn('Google OAuth setup authorization rejected: setup-secret header is missing or does not match', {
+      headerPresent: typeof req.get(SETUP_SECRET_HEADER) === 'string',
+    });
     return res.status(401).json({ message: 'OAuth setup authorization failed' });
   }
   return next();
@@ -77,7 +131,15 @@ const renderStatusPage = (title, message) => `<!doctype html>
 </html>`;
 
 router.get('/auth/google/setup', (req, res) => {
-  if (!hasStrongSetupSecret() || !emailService.isOAuthClientConfigured()) {
+  if (!hasStrongSetupSecret()) {
+    console.warn('Google OAuth setup page unavailable: OAUTH_SETUP_SECRET is missing or shorter than 32 bytes');
+    return res.status(404).send('OAuth setup is disabled or not configured.');
+  }
+  const missingOAuthConfig = getMissingOAuthConfig();
+  if (missingOAuthConfig.length > 0) {
+    console.error('Google OAuth setup page unavailable: OAuth client configuration is incomplete', {
+      missingVariables: missingOAuthConfig,
+    });
     return res.status(404).send('OAuth setup is disabled or not configured.');
   }
 
@@ -126,23 +188,32 @@ document.getElementById('setup-form').addEventListener('submit', async (event) =
 });
 
 router.post('/auth/google/authorize', requireSetupSecret, (req, res) => {
-  if (!emailService.isOAuthClientConfigured()) {
+  const missingOAuthConfig = getMissingOAuthConfig();
+  if (missingOAuthConfig.length > 0 || !emailService.isOAuthClientConfigured()) {
+    console.error('Google OAuth authorization could not start: OAuth client configuration is incomplete', {
+      missingVariables: missingOAuthConfig,
+    });
     return res.status(503).json({ message: 'Google OAuth client configuration is incomplete' });
   }
 
-  const state = crypto.randomBytes(32).toString('base64url');
-  const oauth2Client = emailService.createOAuthClient();
-  const authorizationUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    include_granted_scopes: true,
-    scope: [emailService.GMAIL_SEND_SCOPE],
-    state,
-  });
+  try {
+    const state = crypto.randomBytes(32).toString('base64url');
+    const oauth2Client = emailService.createOAuthClient();
+    const authorizationUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: true,
+      scope: [emailService.GMAIL_SEND_SCOPE],
+      state,
+    });
 
-  setPrivateResponseHeaders(res);
-  setStateCookie(res, state);
-  return res.json({ authorizationUrl });
+    setPrivateResponseHeaders(res);
+    setStateCookie(res, state);
+    return res.json({ authorizationUrl });
+  } catch (error) {
+    logOAuthFailure('authorization URL generation', error, req);
+    return res.status(500).json({ message: 'Google authorization could not be started' });
+  }
 });
 
 router.get('/auth/google/callback', async (req, res) => {
@@ -151,19 +222,26 @@ router.get('/auth/google/callback', async (req, res) => {
 
   const state = typeof req.query.state === 'string' ? req.query.state : '';
   if (!safelyMatches(getCookie(req, STATE_COOKIE), state)) {
+    console.warn('Google OAuth callback rejected: state cookie is missing or does not match');
     return res.status(400).type('html').send(
       renderStatusPage('Authorization failed', 'The OAuth state was missing or invalid. Restart authorization from the setup page.'),
     );
   }
 
   if (req.query.error) {
+    console.warn('Google OAuth callback received an authorization-denied response');
     return res.status(400).type('html').send(
       renderStatusPage('Authorization cancelled', 'Google authorization was cancelled or denied. Restart authorization to try again.'),
     );
   }
 
   const code = typeof req.query.code === 'string' ? req.query.code : '';
-  if (!code || !emailService.isOAuthClientConfigured()) {
+  const missingOAuthConfig = getMissingOAuthConfig();
+  if (!code || missingOAuthConfig.length > 0 || !emailService.isOAuthClientConfigured()) {
+    console.error('Google OAuth callback could not complete authorization', {
+      authorizationCodePresent: Boolean(code),
+      missingVariables: missingOAuthConfig,
+    });
     return res.status(400).type('html').send(
       renderStatusPage('Authorization failed', 'Google authorization could not be completed. Check the OAuth configuration and try again.'),
     );
@@ -193,8 +271,7 @@ router.get('/auth/google/callback', async (req, res) => {
 </body>
 </html>`);
   } catch (error) {
-    const status = Number(error.response?.status);
-    console.error('Google OAuth token exchange failed:', status || 'unknown error');
+    logOAuthFailure('token exchange', error, req);
     return res.status(502).type('html').send(
       renderStatusPage('Authorization failed', 'Google token exchange failed. Verify the client credentials and exact redirect URI, then try again.'),
     );
