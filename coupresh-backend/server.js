@@ -15,7 +15,11 @@ const ensureStudentVerificationColumns = async (database) => {
     emailVerified: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
+    },
+    emailVerifiedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     verificationCodeHash: {
       type: DataTypes.STRING,
@@ -30,6 +34,23 @@ const ensureStudentVerificationColumns = async (database) => {
       allowNull: true,
     },
     verificationAttempts: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    passwordResetCodeHash: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    passwordResetExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    passwordResetSentAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    passwordResetAttempts: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,

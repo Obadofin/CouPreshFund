@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const nodemailer = require('nodemailer');
 
 process.env.DB_NAME = process.env.DB_NAME || 'test_db';
 process.env.DB_USER = process.env.DB_USER || 'test_user';
@@ -35,8 +36,11 @@ test('email verification gates registration sign-in and activates accounts', asy
     sendVerificationEmail: emailService.sendVerificationEmail,
   };
   const originalEmailConfig = {
-    GOOGLE_SCRIPT_URL: process.env.GOOGLE_SCRIPT_URL,
-    EMAIL_SECRET: process.env.EMAIL_SECRET,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
+    EMAIL_FROM: process.env.EMAIL_FROM,
   };
   let student;
   let sentCode;
@@ -44,8 +48,11 @@ test('email verification gates registration sign-in and activates accounts', asy
   let failDelivery = false;
 
   Object.assign(process.env, {
-    GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/test/exec',
-    EMAIL_SECRET: 'test-google-script-secret',
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: '465',
+    SMTP_USER: 'sender@example.test',
+    SMTP_APP_PASSWORD: 'test-app-password',
+    EMAIL_FROM: 'CouPreshFund <sender@example.test>',
   });
 
   Student.create = async (attributes) => {
@@ -63,7 +70,7 @@ test('email verification gates registration sign-in and activates accounts', asy
   );
   emailService.sendVerificationEmail = async (email, code) => {
     if (failDelivery) {
-      throw new Error('Google Apps Script unavailable');
+      throw new Error('Gmail SMTP unavailable');
     }
     assert.ok(email.endsWith('@example.test'));
     sentCode = code;
@@ -115,8 +122,12 @@ test('email verification gates registration sign-in and activates accounts', asy
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'student@example.test', password: 'pass1234' }),
       });
-      const blockedLogin = await login();
-      assert.equal(blockedLogin.status, 403);
+      const pendingLogin = await login();
+      assert.equal(pendingLogin.status, 200);
+      const pendingLoginBody = await pendingLogin.json();
+      assert.equal(pendingLoginBody.verificationRequired, true);
+      assert.equal(pendingLoginBody.student.email, 'student@example.test');
+      assert.equal(Object.hasOwn(pendingLoginBody, 'token'), false);
 
       const resend = await fetch(`${baseUrl}/api/v1/auth/resend-verification`, {
         method: 'POST',
@@ -139,7 +150,29 @@ test('email verification gates registration sign-in and activates accounts', asy
       assert.equal(verified.status, 200);
       assert.equal((await verified.json()).student.email, 'student@example.test');
       assert.equal(student.emailVerified, true);
+      assert.ok(student.emailVerifiedAt instanceof Date);
       assert.equal(student.verificationCodeHash, null);
+
+      student.emailVerified = true;
+      student.emailVerifiedAt = null;
+      student.verificationCodeHash = null;
+      student.verificationExpiresAt = null;
+      student.verificationSentAt = null;
+      const legacyLogin = await login();
+      assert.equal(legacyLogin.status, 200);
+      assert.equal((await legacyLogin.json()).verificationRequired, true);
+
+      const legacyResend = await fetch(`${baseUrl}/api/v1/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'student@example.test' }),
+      });
+      assert.equal(legacyResend.status, 200);
+      assert.equal(emailCount, 2);
+
+      const legacyVerified = await verify(sentCode);
+      assert.equal(legacyVerified.status, 200);
+      assert.ok(student.emailVerifiedAt instanceof Date);
 
       const successfulLogin = await login();
       assert.equal(successfulLogin.status, 200);
@@ -173,7 +206,7 @@ test('email verification gates registration sign-in and activates accounts', asy
         body: JSON.stringify({ email: 'another@example.test' }),
       });
       assert.equal(resendPendingCode.status, 200);
-      assert.equal(emailCount, 2);
+      assert.equal(emailCount, 3);
     });
   } finally {
     Student.create = originalMethods.create;
@@ -189,28 +222,74 @@ test('email verification gates registration sign-in and activates accounts', asy
   }
 });
 
-test('Google Apps Script mail service requires an HTTPS URL and shared secret', () => {
+test('Gmail SMTP mail service requires a host, port, account, app password, and sender', () => {
+  const validConfig = {
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: '465',
+    SMTP_USER: 'sender@example.test',
+    SMTP_APP_PASSWORD: 'test-app-password',
+    EMAIL_FROM: 'CouPreshFund <sender@example.test>',
+  };
+  assert.equal(emailService.isConfigured(validConfig), true);
+  assert.equal(emailService.isConfigured({ ...validConfig, SMTP_APP_PASSWORD: '' }), false);
+  assert.equal(emailService.isConfigured({ ...validConfig, SMTP_PORT: 'invalid' }), false);
+});
+
+test('Gmail SMTP mail service sends the verification email and propagates delivery failures', async () => {
   const originalEmailConfig = {
-    GOOGLE_SCRIPT_URL: process.env.GOOGLE_SCRIPT_URL,
-    EMAIL_SECRET: process.env.EMAIL_SECRET,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+  };
+  const originalCreateTransport = nodemailer.createTransport;
+  process.env.SMTP_HOST = 'smtp.gmail.com';
+  process.env.SMTP_PORT = '465';
+  process.env.SMTP_USER = 'sender@example.test';
+  process.env.SMTP_APP_PASSWORD = 'test app password';
+  process.env.EMAIL_FROM = 'CouPreshFund <sender@example.test>';
+  let transportOptions;
+  let message;
+  let closeCount = 0;
+  let rejectDelivery = false;
+  nodemailer.createTransport = (options) => {
+    transportOptions = options;
+    return {
+      sendMail: async (mail) => {
+        message = mail;
+        if (rejectDelivery) throw new Error('Gmail SMTP unavailable');
+        return { messageId: '<test-message@example.test>' };
+      },
+      close: () => { closeCount += 1; },
+    };
   };
 
   try {
-    process.env.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/test/exec';
-    process.env.EMAIL_SECRET = 'test-google-script-secret';
-    assert.equal(emailService.isConfigured(), true);
+    await emailService.sendVerificationEmail('student@example.test', '123456');
+    assert.equal(transportOptions.host, 'smtp.gmail.com');
+    assert.equal(transportOptions.port, 465);
+    assert.equal(transportOptions.secure, true);
+    assert.equal(transportOptions.auth.user, 'sender@example.test');
+    assert.equal(transportOptions.auth.pass, 'testapppassword');
+    assert.equal(message.from, 'CouPreshFund <sender@example.test>');
+    assert.equal(message.to, 'student@example.test');
+    assert.equal(message.subject, 'Verify your CouPreshFund email');
+    assert.match(message.text, /123456/);
+    assert.match(message.html, /123456/);
 
-    delete process.env.EMAIL_SECRET;
-    assert.equal(emailService.isConfigured(), false);
+    await emailService.sendPasswordResetEmail('student@example.test', '654321');
+    assert.equal(message.subject, 'Reset your CouPreshFund password');
+    assert.match(message.text, /654321/);
 
-    process.env.EMAIL_SECRET = 'test-google-script-secret';
-    process.env.GOOGLE_SCRIPT_URL = 'http://script.google.com/macros/s/test/exec';
-    assert.equal(emailService.isConfigured(), false);
-
-    process.env.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/test/exec';
-    delete process.env.EMAIL_SECRET;
-    assert.equal(emailService.isConfigured(), false);
+    rejectDelivery = true;
+    await assert.rejects(
+      emailService.sendVerificationEmail('student@example.test', '123456'),
+      /Gmail SMTP unavailable/,
+    );
+    assert.equal(closeCount, 3);
   } finally {
+    nodemailer.createTransport = originalCreateTransport;
     for (const [name, value] of Object.entries(originalEmailConfig)) {
       if (value === undefined) {
         delete process.env[name];
@@ -221,49 +300,119 @@ test('Google Apps Script mail service requires an HTTPS URL and shared secret', 
   }
 });
 
-test('Google Apps Script mail service posts the verification email and detects failure responses', async () => {
-  const originalEmailConfig = {
-    GOOGLE_SCRIPT_URL: process.env.GOOGLE_SCRIPT_URL,
-    EMAIL_SECRET: process.env.EMAIL_SECRET,
+test('password reset requests do not reveal account existence and reset passwords with a valid code', async () => {
+  const bcrypt = require('bcrypt');
+  const originalMethods = {
+    findOne: Student.findOne,
+    isConfigured: emailService.isConfigured,
+    sendPasswordResetEmail: emailService.sendPasswordResetEmail,
   };
-  const originalFetch = globalThis.fetch;
-  const scriptUrl = 'https://script.google.com/macros/s/test/exec';
-  process.env.GOOGLE_SCRIPT_URL = scriptUrl;
-  process.env.EMAIL_SECRET = 'test-google-script-secret';
-  let requestBody;
-  let rejectDelivery = false;
-  globalThis.fetch = async (url, options) => {
-    assert.equal(url, scriptUrl);
-    assert.equal(options.method, 'POST');
-    assert.equal(options.headers['Content-Type'], 'application/json');
-    requestBody = JSON.parse(options.body);
-    return new Response(
-      JSON.stringify(rejectDelivery ? { success: false } : { success: true }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+  let student = {
+    id: '90b8fa6e-7db4-4c50-a046-bb05e1cce72b',
+    email: 'student@example.test',
+    passwordHash: 'previous-password-hash',
+    passwordResetCodeHash: null,
+    passwordResetExpiresAt: null,
+    passwordResetSentAt: null,
+    passwordResetAttempts: 0,
+    save: async () => student,
   };
+  let sentCode;
+  let emailCount = 0;
+  emailService.isConfigured = () => true;
+  emailService.sendPasswordResetEmail = async (email, code) => {
+    assert.equal(email, student.email);
+    sentCode = code;
+    emailCount += 1;
+  };
+  Student.findOne = async ({ where }) => (
+    where.email === student.email ? student : null
+  );
 
   try {
-    await emailService.sendVerificationEmail('student@example.test', '123456');
-    assert.equal(requestBody.secret, 'test-google-script-secret');
-    assert.equal(requestBody.to, 'student@example.test');
-    assert.equal(requestBody.subject, 'Verify your CouPreshFund email');
-    assert.match(requestBody.text, /123456/);
-    assert.match(requestBody.html, /123456/);
+    await withServer(createApp({ database: { authenticate: async () => {} } }), async (baseUrl) => {
+      const postAuth = (path, payload) => fetch(`${baseUrl}/api/v1/auth/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const unknownRequest = await postAuth('forgot-password', { email: 'unknown@example.test' });
+      const knownRequest = await postAuth('forgot-password', { email: student.email });
+      assert.equal(unknownRequest.status, 200);
+      assert.deepEqual(await unknownRequest.json(), await knownRequest.json());
+      assert.equal(emailCount, 1);
+      assert.match(sentCode, /^\d{6}$/);
+      assert.notEqual(student.passwordResetCodeHash, sentCode);
+      assert.ok(student.passwordResetExpiresAt.getTime() > Date.now());
 
-    rejectDelivery = true;
-    await assert.rejects(
-      emailService.sendVerificationEmail('student@example.test', '123456'),
-      /reported email delivery failure/,
-    );
-  } finally {
-    globalThis.fetch = originalFetch;
-    for (const [name, value] of Object.entries(originalEmailConfig)) {
-      if (value === undefined) {
-        delete process.env[name];
-      } else {
-        process.env[name] = value;
+      const cooldownRequest = await postAuth('forgot-password', { email: student.email });
+      assert.equal(cooldownRequest.status, 200);
+      assert.equal(emailCount, 1);
+
+      const wrongCode = await postAuth('reset-password', {
+        email: student.email,
+        code: sentCode === '000000' ? '111111' : '000000',
+        newPassword: 'newpassword123',
+      });
+      assert.equal(wrongCode.status, 400);
+      assert.equal(student.passwordResetAttempts, 1);
+
+      const reset = await postAuth('reset-password', {
+        email: student.email,
+        code: sentCode,
+        newPassword: 'newpassword123',
+      });
+      assert.equal(reset.status, 200);
+      assert.match((await reset.json()).message, /reset successfully/i);
+      assert.equal(await bcrypt.compare('newpassword123', student.passwordHash), true);
+      assert.equal(student.passwordResetCodeHash, null);
+      assert.equal(student.passwordResetExpiresAt, null);
+      assert.equal(student.passwordResetSentAt, null);
+      assert.equal(student.passwordResetAttempts, 0);
+
+      const reusedCode = await postAuth('reset-password', {
+        email: student.email,
+        code: sentCode,
+        newPassword: 'anotherpassword123',
+      });
+      assert.equal(reusedCode.status, 400);
+
+      student.passwordResetSentAt = new Date(Date.now() - 61_000);
+      const newRequest = await postAuth('forgot-password', { email: student.email });
+      assert.equal(newRequest.status, 200);
+      const lockedCode = sentCode;
+      const incorrectCode = lockedCode === '000000' ? '111111' : '000000';
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const rejected = await postAuth('reset-password', {
+          email: student.email,
+          code: incorrectCode,
+          newPassword: 'newpassword123',
+        });
+        assert.equal(rejected.status, 400);
       }
-    }
+      assert.equal(student.passwordResetAttempts, 5);
+      const lockedOut = await postAuth('reset-password', {
+        email: student.email,
+        code: lockedCode,
+        newPassword: 'newpassword123',
+      });
+      assert.equal(lockedOut.status, 400);
+
+      student.passwordResetSentAt = new Date(Date.now() - 61_000);
+      const expiryRequest = await postAuth('forgot-password', { email: student.email });
+      assert.equal(expiryRequest.status, 200);
+      student.passwordResetExpiresAt = new Date(Date.now() - 1);
+      const expiredCode = await postAuth('reset-password', {
+        email: student.email,
+        code: sentCode,
+        newPassword: 'newpassword123',
+      });
+      assert.equal(expiredCode.status, 400);
+      assert.equal(emailCount, 3);
+    });
+  } finally {
+    Student.findOne = originalMethods.findOne;
+    emailService.isConfigured = originalMethods.isConfigured;
+    emailService.sendPasswordResetEmail = originalMethods.sendPasswordResetEmail;
   }
 });

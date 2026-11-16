@@ -81,7 +81,7 @@ test('adds the completed challenge steps column to existing databases', async ()
   ]);
 });
 
-test('adds the email verification columns to existing student tables', async () => {
+test('adds email verification and password reset columns to existing student tables', async () => {
   const calls = [];
   await ensureStudentVerificationColumns({
     getQueryInterface: () => ({
@@ -97,11 +97,16 @@ test('adds the email verification columns to existing student tables', async () 
 
   assert.deepEqual(calls, [
     ['describe', 'Students'],
-    ['add', 'Students', 'emailVerified', false, true],
+    ['add', 'Students', 'emailVerified', false, false],
+    ['add', 'Students', 'emailVerifiedAt', true, undefined],
     ['add', 'Students', 'verificationCodeHash', true, undefined],
     ['add', 'Students', 'verificationExpiresAt', true, undefined],
     ['add', 'Students', 'verificationSentAt', true, undefined],
     ['add', 'Students', 'verificationAttempts', false, 0],
+    ['add', 'Students', 'passwordResetCodeHash', true, undefined],
+    ['add', 'Students', 'passwordResetExpiresAt', true, undefined],
+    ['add', 'Students', 'passwordResetSentAt', true, undefined],
+    ['add', 'Students', 'passwordResetAttempts', false, 0],
   ]);
 });
 

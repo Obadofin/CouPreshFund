@@ -10,11 +10,11 @@ Express API backed by PostgreSQL and Sequelize.
 ## Local setup
 
 1. Create a PostgreSQL database and user.
-2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Google Apps Script settings for email verification.
+2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Gmail SMTP settings for email verification.
 3. Install dependencies with `npm ci`.
 4. Start the API with `npm start`.
 
-The server validates its required database and JWT environment variables before starting. Email registration requires an HTTPS Google Apps Script Web App URL and a shared secret. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
+The server validates its required database and JWT environment variables before starting. Email registration requires a Gmail App Password and a sender address matching the authenticated Gmail account. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
 
 Never commit `.env` or use credentials copied from another branch. Keep `.env.example` limited to placeholder values.
 
@@ -30,8 +30,11 @@ Never commit `.env` or use credentials copied from another branch. Keep `.env.ex
 | `DB_HOST` | Yes | PostgreSQL host |
 | `DB_PORT` | Yes | PostgreSQL port |
 | `JWT_SECRET` | Yes | Private secret used to sign authentication tokens |
-| `GOOGLE_SCRIPT_URL` | For email registration | HTTPS URL of the deployed Google Apps Script Web App |
-| `EMAIL_SECRET` | For email registration | Shared secret verified by the Google Apps Script; keep private |
+| `SMTP_HOST` | For email registration | SMTP server; use `smtp.gmail.com` |
+| `SMTP_PORT` | For email registration | SMTP port; use `465` for SSL or `587` for STARTTLS |
+| `SMTP_USER` | For email registration | Gmail account used to authenticate |
+| `SMTP_APP_PASSWORD` | For email registration | Google App Password; keep private |
+| `EMAIL_FROM` | For email registration | Sender name and the same Gmail address as `SMTP_USER` |
 
 Use a long, randomly generated `JWT_SECRET` in local and deployed environments.
 For deployment, set `CORS_ORIGINS` to the exact frontend origin (for example, `https://your-site.onrender.com`) and include local origins only if local browser development is needed. Native mobile API requests do not rely on browser CORS.
@@ -47,7 +50,9 @@ All routes are versioned under `/api/v1`.
 | `POST` | `/api/v1/auth/register` | Create a pending student account and email a verification code |
 | `POST` | `/api/v1/auth/verify-email` | Verify an email with its six-digit code and activate the account |
 | `POST` | `/api/v1/auth/resend-verification` | Resend a code to a pending account; limited to one email per minute |
-| `POST` | `/api/v1/auth/login` | Sign in and receive a JWT |
+| `POST` | `/api/v1/auth/forgot-password` | Request a password-reset code; response does not reveal whether the account exists |
+| `POST` | `/api/v1/auth/reset-password` | Change a password with the six-digit email code |
+| `POST` | `/api/v1/auth/login` | Sign in and receive a JWT, or a verification-required response for an unverified student |
 | `GET` | `/api/v1/auth/me` | Return the authenticated student; requires a Bearer token |
 | `GET` | `/api/v1/students/me/onboarding` | Return the authenticated student's saved onboarding profile |
 | `PUT` | `/api/v1/students/me/onboarding` | Create or update school, graduation goal, and savings plan details |
@@ -85,11 +90,15 @@ All routes are versioned under `/api/v1`.
 
 Errors use JSON responses with a `message` field. Internal server errors do not return implementation or database details.
 
-Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by Google Apps Script to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
+Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by Gmail SMTP to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
 
-Set `GOOGLE_SCRIPT_URL` and `EMAIL_SECRET` in the backend environment. The backend sends a JSON `POST` containing `secret`, `to`, `subject`, `text`, and `html`. Configure the Apps Script `doPost` handler to parse that JSON, compare `secret` against a script property (never hard-code or return the secret), and send the message using the script owner's authorized Gmail account. Have the handler return JSON with `success: true` after delivery, or `success: false`/`error` if delivery fails. Deploy the Web App so the backend can invoke it, and keep its URL and shared secret out of frontend code and logs.
+Existing students can sign in with their email and password to reach a restricted dashboard verification screen if they have not completed the new email-verification flow. This includes older accounts, which are identified by having no verification timestamp. They can request a code and verify without registering again; dashboard features remain unavailable until verification succeeds.
 
-For hosted QA, use separate QA frontend/backend services and a separate QA database in Render. Configure the QA backend with its own `CORS_ORIGINS`, QA database variables, `GOOGLE_SCRIPT_URL`, and `EMAIL_SECRET`; point the QA frontend at the QA backend. Testers register with inboxes they can access and receive the OTP by email. Keep production and QA data isolated, and store the Web App URL and shared secret only in backend environment variables, never in the frontend.
+Password recovery starts with `POST /api/v1/auth/forgot-password` using `{ "email": "..." }`. The backend returns the same response for known and unknown email addresses. If the account exists, it emails a six-digit code that expires after 10 minutes; requests are limited to one email per minute. Complete the reset with `POST /api/v1/auth/reset-password` using `{ "email": "...", "code": "123456", "newPassword": "..." }`. Codes are stored as keyed hashes, allow at most five incorrect attempts, and are cleared after a successful password change. New passwords must be at least eight characters and contain a letter and a number.
+
+Enable 2-Step Verification on the Gmail account and create an App Password for this backend. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_APP_PASSWORD`, and `EMAIL_FROM` in the backend environment. Use the same Gmail address for `SMTP_USER` and `EMAIL_FROM`. Keep the App Password only in backend environment variables, never in frontend code or logs.
+
+For hosted QA, use separate QA frontend/backend services and a separate QA database in Render. Configure the QA backend with its own `CORS_ORIGINS`, QA database variables, Gmail SMTP settings, and App Password; point the QA frontend at the QA backend. Testers register with inboxes they can access and receive the OTP by email. Keep production and QA data isolated, and store the App Password only in backend environment variables, never in the frontend.
 
 The onboarding request uses the frontend fields `institution`, `course`, `level`, `graduationYear`, `goalAmount`, `purpose`, `contribution`, and `cadence`. It requires all fields; amounts are whole Naira values and cadence is `weekly`, `monthly`, or `yearly`.
 
@@ -107,7 +116,7 @@ Opportunity records in this release are sample listings; verify details with the
 
 Guardian invite codes are random, expire after seven days, and are stored as hashes. Creating a replacement revokes the prior pending code. Guardians can create an account with the code and verify their email, or sign in to an existing verified guardian account and redeem the code at `/guardian/invite?code=...`. Redemption is one-time and recorded on the invitation. Guardian and student access tokens are separate; linking confirms the relationship only. Guardians do not have access to student profile or dashboard data in this release.
 
-The `StudentProfile`, `SavingsContribution`, `StudentBudget`, `StudentExpense`, `StudentLessonProgress`, `StudentChallengeProgress`, `StudentPointTransaction`, `Guardian`, `GuardianInvitation`, and `StudentOpportunitySave` Sequelize models are registered at startup. `sequelize.sync()` creates their PostgreSQL tables automatically if they do not exist. Since it does not alter existing tables when model columns change, startup also applies narrow migrations for the challenge `completedSteps` and invitation `guardianId` columns; use deliberate migrations for future schema changes.
+The `StudentProfile`, `SavingsContribution`, `StudentBudget`, `StudentExpense`, `StudentLessonProgress`, `StudentChallengeProgress`, `StudentPointTransaction`, `Guardian`, `GuardianInvitation`, and `StudentOpportunitySave` Sequelize models are registered at startup. `sequelize.sync()` creates their PostgreSQL tables automatically if they do not exist. Since it does not alter existing tables when model columns change, startup also applies narrow migrations for the email verification and password reset fields, challenge `completedSteps`, and invitation `guardianId`; use deliberate migrations for future schema changes.
 
 ## Checks
 

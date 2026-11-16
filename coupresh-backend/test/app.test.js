@@ -125,7 +125,24 @@ test('onboarding updates require authentication and validate the frontend payloa
     });
     assert.equal(unauthenticated.status, 401);
 
-    const token = jwt.sign({ id: '90b8fa6e-7db4-4c50-a046-bb05e1cce72b' }, process.env.JWT_SECRET);
+    const legacyToken = jwt.sign(
+      { id: '90b8fa6e-7db4-4c50-a046-bb05e1cce72b' },
+      process.env.JWT_SECRET,
+    );
+    const legacyTokenResponse = await fetch(`${baseUrl}/api/v1/students/me/onboarding`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${legacyToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(legacyTokenResponse.status, 403);
+
+    const token = jwt.sign(
+      { id: '90b8fa6e-7db4-4c50-a046-bb05e1cce72b', emailVerified: true },
+      process.env.JWT_SECRET,
+    );
     const invalidPayload = await fetch(`${baseUrl}/api/v1/students/me/onboarding`, {
       method: 'PUT',
       headers: {

@@ -142,7 +142,7 @@ const withServer = async (app, callback) => {
 };
 
 const authHeaders = () => ({
-  Authorization: `Bearer ${jwt.sign({ id: studentId }, process.env.JWT_SECRET)}`,
+  Authorization: `Bearer ${jwt.sign({ id: studentId, emailVerified: true }, process.env.JWT_SECRET)}`,
   'Content-Type': 'application/json',
 });
 

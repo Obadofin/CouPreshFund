@@ -32,8 +32,11 @@ const withServer = async (app, callback) => {
 
 test('guardian signup verifies email and links the invitation; existing guardians can sign in and link', async () => {
   const originalConfig = {
-    GOOGLE_SCRIPT_URL: process.env.GOOGLE_SCRIPT_URL,
-    EMAIL_SECRET: process.env.EMAIL_SECRET,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
+    EMAIL_FROM: process.env.EMAIL_FROM,
   };
   const originalSendEmail = emailService.sendVerificationEmail;
   const state = {
@@ -84,8 +87,11 @@ test('guardian signup verifies email and links the invitation; existing guardian
     },
   };
   let sentCode;
-  process.env.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/test/exec';
-  process.env.EMAIL_SECRET = 'test-secret';
+  process.env.SMTP_HOST = 'smtp.gmail.com';
+  process.env.SMTP_PORT = '465';
+  process.env.SMTP_USER = 'sender@example.test';
+  process.env.SMTP_APP_PASSWORD = 'test-app-password';
+  process.env.EMAIL_FROM = 'CouPreshFund <sender@example.test>';
   emailService.sendVerificationEmail = async (_email, code) => { sentCode = code; };
   const app = createApp({
     database: { authenticate: async () => {} },
@@ -174,7 +180,10 @@ test('guardian tokens cannot access student endpoints and student tokens cannot 
       { id: guardian.id, type: 'guardian' },
       process.env.JWT_SECRET,
     );
-    const studentToken = jwt.sign({ id: studentId }, process.env.JWT_SECRET);
+    const studentToken = jwt.sign(
+      { id: studentId, emailVerified: true },
+      process.env.JWT_SECRET,
+    );
     const studentEndpoint = await fetch(`${baseUrl}/api/v1/students/me/guardian-invitations`, {
       headers: { Authorization: `Bearer ${guardianToken}` },
     });

@@ -14,6 +14,9 @@ const authenticate = (req, res, next) => {
     if (decoded.type === 'guardian') {
       return res.status(403).json({ message: 'Student account required' });
     }
+    if (decoded.emailVerified !== true) {
+      return res.status(403).json({ message: 'Verify your email address to continue' });
+    }
     req.studentId = decoded.id;
     next();
   } catch (error) {

@@ -56,7 +56,7 @@ test('PostgreSQL persists goals, budgets, and contributions through the authenti
       listeningServer.once('error', reject);
     });
 
-    const token = jwt.sign({ id: studentId }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: studentId, emailVerified: true }, process.env.JWT_SECRET);
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     const lessonCatalog = await fetch(`${baseUrl}/api/v1/learning/lessons`);

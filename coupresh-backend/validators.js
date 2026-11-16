@@ -62,6 +62,29 @@ const resendVerificationRules = [
   handleValidation,
 ];
 
+const requestPasswordResetRules = [
+  body('email')
+    .trim()
+    .isEmail().withMessage('Enter a valid email address')
+    .normalizeEmail(),
+  handleValidation,
+];
+
+const resetPasswordRules = [
+  body('email')
+    .trim()
+    .isEmail().withMessage('Enter a valid email address')
+    .normalizeEmail(),
+  body('code')
+    .trim()
+    .matches(/^\d{6}$/).withMessage('Enter the six-digit password reset code'),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Za-z]/).withMessage('Password must contain a letter')
+    .matches(/\d/).withMessage('Password must contain a number'),
+  handleValidation,
+];
+
 const loginRules = [
   body('email')
     .optional({ values: 'falsy' })
@@ -194,6 +217,8 @@ module.exports = {
   registerRules,
   verifyEmailRules,
   resendVerificationRules,
+  requestPasswordResetRules,
+  resetPasswordRules,
   loginRules,
   onboardingRules,
   contributionRules,
