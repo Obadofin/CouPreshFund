@@ -272,6 +272,9 @@ test('Gmail SMTP mail service sends the verification email and propagates delive
     assert.equal(transportOptions.secure, true);
     assert.equal(transportOptions.auth.user, 'sender@example.test');
     assert.equal(transportOptions.auth.pass, 'testapppassword');
+    assert.equal(transportOptions.connectionTimeout, 30000);
+    assert.equal(transportOptions.greetingTimeout, 30000);
+    assert.equal(transportOptions.socketTimeout, 30000);
     assert.equal(message.from, 'CouPreshFund <sender@example.test>');
     assert.equal(message.to, 'student@example.test');
     assert.equal(message.subject, 'Verify your CouPreshFund email');
