@@ -10,11 +10,11 @@ Express API backed by PostgreSQL and Sequelize.
 ## Local setup
 
 1. Create a PostgreSQL database and user.
-2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Gmail SMTP settings for email verification.
+2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Gmail API OAuth settings.
 3. Install dependencies with `npm ci`.
 4. Start the API with `npm start`.
 
-The server validates its required database and JWT environment variables before starting. Email registration requires a Gmail App Password and a sender address matching the authenticated Gmail account. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
+The server validates its required database and JWT environment variables before starting. Email registration uses the Gmail API over HTTPS and requires a refresh token for the Gmail account configured as `GMAIL_USER`. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
 
 Never commit `.env` or use credentials copied from another branch. Keep `.env.example` limited to placeholder values.
 
@@ -30,11 +30,12 @@ Never commit `.env` or use credentials copied from another branch. Keep `.env.ex
 | `DB_HOST` | Yes | PostgreSQL host |
 | `DB_PORT` | Yes | PostgreSQL port |
 | `JWT_SECRET` | Yes | Private secret used to sign authentication tokens |
-| `SMTP_HOST` | For email registration | SMTP server; use `smtp.gmail.com` |
-| `SMTP_PORT` | For email registration | SMTP port; use `465` for SSL or `587` for STARTTLS |
-| `SMTP_USER` | For email registration | Gmail account used to authenticate |
-| `SMTP_APP_PASSWORD` | For email registration | Google App Password; keep private |
-| `EMAIL_FROM` | For email registration | Sender name and the same Gmail address as `SMTP_USER` |
+| `GOOGLE_CLIENT_ID` | For email registration and OAuth setup | OAuth 2.0 client ID from Google Cloud |
+| `GOOGLE_CLIENT_SECRET` | For email registration and OAuth setup | OAuth 2.0 client secret; keep private |
+| `GOOGLE_REDIRECT_URI` | For email registration and OAuth setup | Must exactly match the Google Cloud authorized redirect URI |
+| `GOOGLE_REFRESH_TOKEN` | For email registration | OAuth refresh token obtained from the protected authorization flow; keep private |
+| `GMAIL_USER` | For email registration | Gmail account that authorized sending; this is the sender |
+| `OAUTH_SETUP_SECRET` | Temporarily, for OAuth setup/testing | Random setup secret of at least 32 bytes; remove after authorization and testing |
 
 Use a long, randomly generated `JWT_SECRET` in local and deployed environments.
 For deployment, set `CORS_ORIGINS` to the exact frontend origin (for example, `https://your-site.onrender.com`) and include local origins only if local browser development is needed. Native mobile API requests do not rely on browser CORS.
@@ -90,15 +91,77 @@ All routes are versioned under `/api/v1`.
 
 Errors use JSON responses with a `message` field. Internal server errors do not return implementation or database details.
 
-Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by Gmail SMTP to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
+Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by the Gmail API to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
 
 Existing students can sign in with their email and password to reach a restricted dashboard verification screen if they have not completed the new email-verification flow. This includes older accounts, which are identified by having no verification timestamp. They can request a code and verify without registering again; dashboard features remain unavailable until verification succeeds.
 
 Password recovery starts with `POST /api/v1/auth/forgot-password` using `{ "email": "..." }`. The backend returns the same response for known and unknown email addresses. If the account exists, it emails a six-digit code that expires after 10 minutes; requests are limited to one email per minute. Complete the reset with `POST /api/v1/auth/reset-password` using `{ "email": "...", "code": "123456", "newPassword": "..." }`. Codes are stored as keyed hashes, allow at most five incorrect attempts, and are cleared after a successful password change. New passwords must be at least eight characters and contain a letter and a number.
 
-Enable 2-Step Verification on the Gmail account and create an App Password for this backend. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_APP_PASSWORD`, and `EMAIL_FROM` in the backend environment. Use the same Gmail address for `SMTP_USER` and `EMAIL_FROM`. Keep the App Password only in backend environment variables, never in frontend code or logs.
+## Gmail API OAuth and Render setup
 
-For hosted QA, use separate QA frontend/backend services and a separate QA database in Render. Configure the QA backend with its own `CORS_ORIGINS`, QA database variables, Gmail SMTP settings, and App Password; point the QA frontend at the QA backend. Testers register with inboxes they can access and receive the OTP by email. Keep production and QA data isolated, and store the App Password only in backend environment variables, never in the frontend.
+The backend sends mail through the Gmail API using OAuth 2.0 over HTTPS; it does not use SMTP or Gmail App Passwords. The OAuth flow requests only `https://www.googleapis.com/auth/gmail.send`. The `GMAIL_USER` account authorizes the application and is the sender; messages can be sent to arbitrary recipient addresses, subject to Google's account and API quotas.
+
+### Configure Google Cloud
+
+1. In the Google Cloud project, enable the **Gmail API**.
+2. Configure the OAuth consent screen as **External**, add the Gmail send scope `https://www.googleapis.com/auth/gmail.send`, and, while the app is in **Testing**, add the `GMAIL_USER` account as a test user.
+3. Create an OAuth client with application type **Web application**.
+4. Add this exact value under **Authorized redirect URIs**:
+
+   `https://corporatefund-i-backend.onrender.com/auth/google/callback`
+
+5. Copy the OAuth client ID and client secret from the new credential.
+
+The exact `GOOGLE_REDIRECT_URI` value must also be `https://corporatefund-i-backend.onrender.com/auth/google/callback`. Google requires the redirect URI in the authorization request to exactly match the URI registered on the OAuth client.
+
+### Configure Render environment variables
+
+In the backend service's **Environment** settings, add:
+
+| Variable | Value |
+| --- | --- |
+| `GOOGLE_CLIENT_ID` | OAuth client ID from Google Cloud |
+| `GOOGLE_CLIENT_SECRET` | OAuth client secret from Google Cloud |
+| `GOOGLE_REDIRECT_URI` | `https://corporatefund-i-backend.onrender.com/auth/google/callback` |
+| `GMAIL_USER` | The Gmail account that will send verification and reset emails |
+| `OAUTH_SETUP_SECRET` | A randomly generated secret with at least 32 bytes |
+
+Generate a setup secret locally with Node.js (do not use a predictable phrase):
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+Save the output directly into Render's `OAUTH_SETUP_SECRET` environment variable. Do not commit it or put it in frontend configuration.
+
+### Authorize Gmail and store the refresh token
+
+1. Deploy the backend with the variables above, but without `GOOGLE_REFRESH_TOKEN`.
+2. Open `https://corporatefund-i-backend.onrender.com/auth/google/setup` in a browser and enter the setup secret.
+3. Sign into Google as the `GMAIL_USER` account and approve the Gmail send permission.
+4. Google returns to the exact callback URI above. The callback validates a short-lived, HTTP-only OAuth state cookie and shows the refresh token once in a private, no-store setup page. Copy it directly from that page into Render's `GOOGLE_REFRESH_TOKEN` variable. The page never displays the access token.
+5. While `OAUTH_SETUP_SECRET` is still set, you can test delivery using the protected endpoint below. Then remove `OAUTH_SETUP_SECRET` from Render and redeploy. This disables the setup page, authorization initiation, and test-email endpoint; normal registration and verification continue using `GOOGLE_REFRESH_TOKEN`.
+
+Treat `GOOGLE_REFRESH_TOKEN` like a password. Add it only in Render's backend environment variables, never in frontend code, source control, public API responses, screenshots, or logs. If the callback does not return a refresh token, revoke the existing app grant in the Google Account's third-party connections and repeat authorization.
+
+Google OAuth apps left in **Testing** may receive refresh tokens that expire after seven days for Gmail scopes. For continued operation, check the Google Auth Platform publishing/verification requirements for the Gmail send scope. The Gmail API uses HTTPS and does not require SMTP access; Gmail sending and Google API quotas still apply. The service reports authentication, permission, and quota failures without logging tokens.
+
+### Test Gmail API delivery and the OTP flow
+
+Before removing `OAUTH_SETUP_SECRET`, send a test message to an inbox you can access:
+
+```powershell
+$setupSecret = Read-Host "OAUTH_SETUP_SECRET"
+$body = @{ to = "your-test-recipient@example.com" } | ConvertTo-Json
+Invoke-RestMethod -Method Post `
+  -Uri "https://corporatefund-i-backend.onrender.com/auth/google/test-email" `
+  -Headers @{ "x-oauth-setup-secret" = $setupSecret } `
+  -ContentType "application/json" -Body $body
+```
+
+Then test the existing complete flow: register with an inbox you can access, confirm that it receives the OTP, submit the OTP through the existing frontend, and verify that the account is activated only after the backend accepts the code. The backend tests mock Google API calls; they do not send real email.
+
+For hosted QA, use separate QA frontend/backend services and a separate QA database in Render. Configure the QA backend with its own `CORS_ORIGINS`, QA database variables, and Gmail API OAuth credentials; point the QA frontend at the QA backend. Testers register with inboxes they can access and receive the OTP by email. Keep production and QA data isolated, and store OAuth secrets only in backend environment variables, never in the frontend.
 
 The onboarding request uses the frontend fields `institution`, `course`, `level`, `graduationYear`, `goalAmount`, `purpose`, `contribution`, and `cadence`. It requires all fields; amounts are whole Naira values and cadence is `weekly`, `monthly`, or `yearly`.
 

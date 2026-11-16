@@ -12,6 +12,7 @@ require('./models/GuardianInvitation');
 require('./models/Guardian');
 require('./models/StudentOpportunitySave');
 const authRoutes = require('./routes/auth');
+const googleOAuthRoutes = require('./routes/googleOAuth');
 const createGuardianAuthRouter = require('./routes/guardianAuth');
 const learningRoutes = require('./routes/learning');
 const createSkillsRouter = require('./routes/skills');
@@ -59,6 +60,7 @@ const createApp = ({
   });
 
   app.use(express.json());
+  app.use(googleOAuthRoutes);
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/guardian-auth', createGuardianAuthRouter(guardianModels));
   app.use('/api/v1/learning', learningRoutes);

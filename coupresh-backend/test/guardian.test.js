@@ -32,11 +32,11 @@ const withServer = async (app, callback) => {
 
 test('guardian signup verifies email and links the invitation; existing guardians can sign in and link', async () => {
   const originalConfig = {
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
-    EMAIL_FROM: process.env.EMAIL_FROM,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+    GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
+    GMAIL_USER: process.env.GMAIL_USER,
   };
   const originalSendEmail = emailService.sendVerificationEmail;
   const state = {
@@ -87,11 +87,11 @@ test('guardian signup verifies email and links the invitation; existing guardian
     },
   };
   let sentCode;
-  process.env.SMTP_HOST = 'smtp.gmail.com';
-  process.env.SMTP_PORT = '465';
-  process.env.SMTP_USER = 'sender@example.test';
-  process.env.SMTP_APP_PASSWORD = 'test-app-password';
-  process.env.EMAIL_FROM = 'CouPreshFund <sender@example.test>';
+  process.env.GOOGLE_CLIENT_ID = 'test-client-id';
+  process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+  process.env.GOOGLE_REDIRECT_URI = 'https://example.test/auth/google/callback';
+  process.env.GOOGLE_REFRESH_TOKEN = 'test-refresh-token';
+  process.env.GMAIL_USER = 'sender@example.test';
   emailService.sendVerificationEmail = async (_email, code) => { sentCode = code; };
   const app = createApp({
     database: { authenticate: async () => {} },

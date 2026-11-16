@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const nodemailer = require('nodemailer');
+const googleapis = require('googleapis');
 
 process.env.DB_NAME = process.env.DB_NAME || 'test_db';
 process.env.DB_USER = process.env.DB_USER || 'test_user';
@@ -12,6 +12,11 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 const createApp = require('../app');
 const Student = require('../models/Student');
 const emailService = require('../services/email');
+
+const decodeMimeBodies = (rawMessage) => rawMessage
+  .split('Content-Transfer-Encoding: base64\r\n\r\n')
+  .slice(1)
+  .map((part) => Buffer.from(part.split('\r\n--')[0].replace(/\r\n/g, ''), 'base64').toString('utf8'));
 
 const withServer = async (app, callback) => {
   const server = await new Promise((resolve, reject) => {
@@ -36,11 +41,11 @@ test('email verification gates registration sign-in and activates accounts', asy
     sendVerificationEmail: emailService.sendVerificationEmail,
   };
   const originalEmailConfig = {
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
-    EMAIL_FROM: process.env.EMAIL_FROM,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+    GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
+    GMAIL_USER: process.env.GMAIL_USER,
   };
   let student;
   let sentCode;
@@ -48,11 +53,11 @@ test('email verification gates registration sign-in and activates accounts', asy
   let failDelivery = false;
 
   Object.assign(process.env, {
-    SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: '465',
-    SMTP_USER: 'sender@example.test',
-    SMTP_APP_PASSWORD: 'test-app-password',
-    EMAIL_FROM: 'CouPreshFund <sender@example.test>',
+    GOOGLE_CLIENT_ID: 'test-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-client-secret',
+    GOOGLE_REDIRECT_URI: 'https://corporatefund-i-backend.onrender.com/auth/google/callback',
+    GOOGLE_REFRESH_TOKEN: 'test-refresh-token',
+    GMAIL_USER: 'sender@example.test',
   });
 
   Student.create = async (attributes) => {
@@ -70,7 +75,7 @@ test('email verification gates registration sign-in and activates accounts', asy
   );
   emailService.sendVerificationEmail = async (email, code) => {
     if (failDelivery) {
-      throw new Error('Gmail SMTP unavailable');
+      throw new Error('Gmail API unavailable');
     }
     assert.ok(email.endsWith('@example.test'));
     sentCode = code;
@@ -222,77 +227,138 @@ test('email verification gates registration sign-in and activates accounts', asy
   }
 });
 
-test('Gmail SMTP mail service requires a host, port, account, app password, and sender', () => {
+test('Gmail API mail service requires OAuth credentials, a refresh token, and a sender', () => {
   const validConfig = {
-    SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: '465',
-    SMTP_USER: 'sender@example.test',
-    SMTP_APP_PASSWORD: 'test-app-password',
-    EMAIL_FROM: 'CouPreshFund <sender@example.test>',
+    GOOGLE_CLIENT_ID: 'test-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-client-secret',
+    GOOGLE_REDIRECT_URI: 'https://example.test/auth/google/callback',
+    GOOGLE_REFRESH_TOKEN: 'test-refresh-token',
+    GMAIL_USER: 'sender@example.test',
   };
   assert.equal(emailService.isConfigured(validConfig), true);
-  assert.equal(emailService.isConfigured({ ...validConfig, SMTP_APP_PASSWORD: '' }), false);
-  assert.equal(emailService.isConfigured({ ...validConfig, SMTP_PORT: 'invalid' }), false);
+  assert.equal(emailService.isConfigured({ ...validConfig, GOOGLE_REFRESH_TOKEN: '' }), false);
+  assert.equal(emailService.isConfigured({ ...validConfig, GMAIL_USER: 'invalid' }), false);
 });
 
-test('Gmail SMTP mail service sends the verification email and propagates delivery failures', async () => {
+test('Gmail API mail service sends MIME messages and sanitizes delivery failures', async () => {
   const originalEmailConfig = {
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_APP_PASSWORD: process.env.SMTP_APP_PASSWORD,
-    EMAIL_FROM: process.env.EMAIL_FROM,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+    GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
+    GMAIL_USER: process.env.GMAIL_USER,
   };
-  const originalCreateTransport = nodemailer.createTransport;
-  process.env.SMTP_HOST = 'smtp.gmail.com';
-  process.env.SMTP_PORT = '465';
-  process.env.SMTP_USER = 'sender@example.test';
-  process.env.SMTP_APP_PASSWORD = 'test app password';
-  process.env.EMAIL_FROM = 'CouPreshFund <sender@example.test>';
-  let transportOptions;
-  let message;
-  let closeCount = 0;
-  let rejectDelivery = false;
-  nodemailer.createTransport = (options) => {
-    transportOptions = options;
+  const originalOAuth2 = googleapis.google.auth.OAuth2;
+  const originalGmail = googleapis.google.gmail;
+  Object.assign(process.env, {
+    GOOGLE_CLIENT_ID: 'test-client-id',
+    GOOGLE_CLIENT_SECRET: 'test-client-secret',
+    GOOGLE_REDIRECT_URI: 'https://example.test/auth/google/callback',
+    GOOGLE_REFRESH_TOKEN: 'test-refresh-token',
+    GMAIL_USER: 'sender@example.test',
+  });
+  let oauthOptions;
+  let sentRawMessage;
+  let refreshToken;
+  let failureResponse;
+  let accessTokenRequests = 0;
+  googleapis.google.auth.OAuth2 = class FakeOAuth2 {
+    constructor(clientId, clientSecret, redirectUri) {
+      oauthOptions = { clientId, clientSecret, redirectUri };
+    }
+
+    setCredentials(credentials) {
+      refreshToken = credentials.refresh_token;
+    }
+
+    async getAccessToken() {
+      accessTokenRequests += 1;
+      return { token: 'test-access-token' };
+    }
+  };
+  googleapis.google.gmail = ({ version, auth }) => {
+    assert.equal(version, 'v1');
     return {
-      sendMail: async (mail) => {
-        message = mail;
-        if (rejectDelivery) throw new Error('Gmail SMTP unavailable');
-        return { messageId: '<test-message@example.test>' };
+      users: {
+        messages: {
+          send: async ({ userId, requestBody }) => {
+            assert.equal(userId, 'me');
+            await auth.getAccessToken();
+            sentRawMessage = Buffer.from(
+              requestBody.raw.replace(/-/g, '+').replace(/_/g, '/'),
+              'base64',
+            ).toString('utf8');
+            if (failureResponse) {
+              throw Object.assign(new Error('Internal provider response'), {
+                response: failureResponse,
+              });
+            }
+            return { data: { id: 'test-message-id' } };
+          },
+        },
       },
-      close: () => { closeCount += 1; },
     };
   };
 
   try {
-    await emailService.sendVerificationEmail('student@example.test', '123456');
-    assert.equal(transportOptions.host, 'smtp.gmail.com');
-    assert.equal(transportOptions.port, 465);
-    assert.equal(transportOptions.secure, true);
-    assert.equal(transportOptions.auth.user, 'sender@example.test');
-    assert.equal(transportOptions.auth.pass, 'testapppassword');
-    assert.equal(transportOptions.connectionTimeout, 30000);
-    assert.equal(transportOptions.greetingTimeout, 30000);
-    assert.equal(transportOptions.socketTimeout, 30000);
-    assert.equal(message.from, 'CouPreshFund <sender@example.test>');
-    assert.equal(message.to, 'student@example.test');
-    assert.equal(message.subject, 'Verify your CouPreshFund email');
-    assert.match(message.text, /123456/);
-    assert.match(message.html, /123456/);
+    const sent = await emailService.sendVerificationEmail('recipient@example.test', '123456');
+    assert.deepEqual(oauthOptions, {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      redirectUri: 'https://example.test/auth/google/callback',
+    });
+    assert.equal(refreshToken, 'test-refresh-token');
+    assert.equal(accessTokenRequests, 1);
+    assert.equal(sent.id, 'test-message-id');
+    assert.match(sentRawMessage, /From: CouPreshFund <sender@example\.test>/);
+    assert.match(sentRawMessage, /To: recipient@example\.test/);
+    assert.match(sentRawMessage, /multipart\/alternative/);
+    const verificationBodies = decodeMimeBodies(sentRawMessage);
+    assert.ok(verificationBodies.some((body) => body.includes('verification code is 123456')));
+    assert.ok(verificationBodies.some((body) => body.includes('<p>Your CouPreshFund verification code is:</p>')));
 
-    await emailService.sendPasswordResetEmail('student@example.test', '654321');
-    assert.equal(message.subject, 'Reset your CouPreshFund password');
-    assert.match(message.text, /654321/);
+    await emailService.sendPasswordResetEmail('another@example.test', '654321');
+    assert.match(sentRawMessage, /To: another@example\.test/);
+    assert.ok(decodeMimeBodies(sentRawMessage)
+      .some((body) => body.includes('password reset code is 654321')));
 
-    rejectDelivery = true;
+    await emailService.sendEmail({
+      to: 'plain@example.test',
+      subject: 'Plain text message',
+      text: 'Plain text content',
+    });
+    assert.match(sentRawMessage, /Content-Type: text\/plain; charset=UTF-8/);
+    assert.deepEqual(decodeMimeBodies(sentRawMessage), ['Plain text content']);
+
+    await emailService.sendEmail({
+      to: 'html@example.test',
+      subject: 'HTML message',
+      html: '<p>HTML content</p>',
+    });
+    assert.match(sentRawMessage, /Content-Type: text\/html; charset=UTF-8/);
+    assert.deepEqual(decodeMimeBodies(sentRawMessage), ['<p>HTML content</p>']);
+
+    failureResponse = { status: 503 };
     await assert.rejects(
-      emailService.sendVerificationEmail('student@example.test', '123456'),
-      /Gmail SMTP unavailable/,
+      emailService.sendVerificationEmail('recipient@example.test', '123456'),
+      /Gmail API is temporarily unavailable/,
     );
-    assert.equal(closeCount, 3);
+    failureResponse = { status: 401, data: { error: 'invalid_grant' } };
+    await assert.rejects(
+      emailService.sendVerificationEmail('recipient@example.test', '123456'),
+      /Gmail API authentication failed/,
+    );
+    failureResponse = {
+      status: 403,
+      data: { error: { errors: [{ reason: 'userRateLimitExceeded' }] } },
+    };
+    await assert.rejects(
+      emailService.sendVerificationEmail('recipient@example.test', '123456'),
+      /Gmail API quota or rate limit reached/,
+    );
   } finally {
-    nodemailer.createTransport = originalCreateTransport;
+    googleapis.google.auth.OAuth2 = originalOAuth2;
+    googleapis.google.gmail = originalGmail;
     for (const [name, value] of Object.entries(originalEmailConfig)) {
       if (value === undefined) {
         delete process.env[name];
