@@ -100,6 +100,20 @@ export async function resendStudentVerification(email) {
   })
 }
 
+export async function requestStudentPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function resetStudentPassword({ email, code, newPassword }) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword }),
+  })
+}
+
 export async function loginStudent({ emailOrPhone, password }) {
   const identity = emailOrPhone.includes('@')
     ? { email: emailOrPhone }
@@ -108,6 +122,15 @@ export async function loginStudent({ emailOrPhone, password }) {
     method: 'POST',
     body: JSON.stringify({ ...identity, password }),
   })
+
+  if (result.verificationRequired) {
+    if (!result.student || typeof result.student.fullName !== 'string') {
+      throw new Error('The backend returned an invalid verification response. Please try again.')
+    }
+
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    return { verificationRequired: true, student: result.student }
+  }
 
   if (!result.student || typeof result.student.fullName !== 'string' || !result.token) {
     throw new Error('The backend returned an invalid sign-in response. Check the backend URL and try again.')

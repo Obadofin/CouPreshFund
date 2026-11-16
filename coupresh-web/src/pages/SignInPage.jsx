@@ -2,7 +2,12 @@ import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import BrandIdentity from '../components/BrandIdentity.jsx'
 
-export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
+export default function SignInPage({
+  onBack,
+  onCreateAccount,
+  onForgotPassword,
+  onSubmit,
+}) {
   const location = useLocation()
   const verifiedEmail = location.state?.verifiedEmail || ''
   const [message, setMessage] = useState('')
@@ -15,9 +20,10 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
     setIsSubmitting(true)
 
     const formData = new FormData(event.currentTarget)
+    const emailOrPhone = String(formData.get('emailOrPhone')).trim()
     try {
       await onSubmit({
-        emailOrPhone: String(formData.get('emailOrPhone')).trim(),
+        emailOrPhone,
         password: String(formData.get('password')),
       })
     } catch (error) {
@@ -95,7 +101,7 @@ export default function SignInPage({ onBack, onCreateAccount, onSubmit }) {
 
         <button
           className="signin-forgot"
-          onClick={() => setMessage('Password recovery is coming soon.')}
+          onClick={onForgotPassword}
           type="button"
         >
           Forgot Password?

@@ -54,9 +54,7 @@ The shared request helper is `src/utils/authApi.js`. It uses `/api/v1` by defaul
 | Endpoint | Frontend behavior |
 | --- | --- |
 | `POST /api/v1/auth/register` | Creates a pending student account and emails a verification code. |
-| `POST /api/v1/auth/verify-email` | Verifies the student's email address and activates the account. |
-| `POST /api/v1/auth/resend-verification` | Resends the student's email verification code. |
-| `POST /api/v1/auth/login` | Signs in with an email address or phone number and password. |
+| `POST /api/v1/auth/login` | Signs in with an email address or phone number and password; unverified students see a restricted dashboard verification screen. |
 | `GET /api/v1/auth/me` | Restores the signed-in student and saved onboarding data after a page reload. |
 | `PUT /api/v1/students/me/onboarding` | Saves school, graduation goal, purpose, and savings plan when onboarding is completed. |
 | `PUT /api/v1/students/me/goal` | Saves the graduation goal and the complete onboarding profile from the editable Goals form. |
@@ -93,6 +91,8 @@ The shared request helper is `src/utils/authApi.js`. It uses `/api/v1` by defaul
 
 Student authentication is stored in browser local storage under `coupreshfund.authToken`; guardian authentication uses a separate `coupreshfund.guardianAuthToken`. Backend tokens expire after one day. Registration and sign-in errors are displayed in the interface.
 
+Students with an unverified email can authenticate with their password but receive no access token until verification. They are taken to a restricted dashboard screen where they can request a Resend code and enter it; the rest of the dashboard remains inaccessible until verification succeeds.
+
 ## Product screens and data status
 
 The authentication token is restored from `/api/v1/auth/me` on reload, and dashboard/product routes require a signed-in student. Onboarding data is saved at completion and restored with the student profile. The My Money goals form updates the saved graduation target and purpose; the budget screen loads and saves amounts independently for each period, records expenses, and displays the actual category breakdown and remaining budget.
@@ -104,7 +104,6 @@ Self-reported savings and expenses do not initiate, verify, or move money. Learn
 | Route | Screen |
 | --- | --- |
 | `/` | Welcome and onboarding |
-| `/privacy` | Privacy Policy |
 | `/guardian/invite?code=123456` | Guardian account creation/sign-in and invite-code linking |
 | `/login` | Sign in |
 | `/signup/details` | Student account creation |

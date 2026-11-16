@@ -7,8 +7,8 @@ import GoalSetupPage from './pages/GoalSetupPage.jsx'
 import GuardianInvitePage from './pages/GuardianInvitePage.jsx'
 import GrowthUnlockPage from './pages/GrowthUnlockPage.jsx'
 import InviteGuardianPage from './pages/InviteGuardianPage.jsx'
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage.jsx'
 import ProfilePreviewPage from './pages/ProfilePreviewPage.jsx'
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
 import SavingsPlanPage from './pages/SavingsPlanPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import StudentDetailsPage from './pages/StudentDetailsPage.jsx'
@@ -19,8 +19,10 @@ import {
   getCurrentStudent,
   hasAuthToken,
   loginStudent,
+  requestStudentPasswordReset,
   resendStudentVerification,
   registerStudent,
+  resetStudentPassword,
   verifyStudentEmail,
   saveStudentGoal,
   saveStudentOnboarding,
@@ -47,6 +49,7 @@ const graduationYears = Array.from(
   (_, index) => new Date().getFullYear() + index + 1,
 )
 const PENDING_VERIFICATION_STORAGE_KEY = 'coupreshfund.pendingVerificationEmail'
+const PENDING_VERIFICATION_PURPOSE_STORAGE_KEY = 'coupreshfund.pendingVerificationPurpose'
 
 function AppRoutes() {
   const navigate = useNavigate()
@@ -56,6 +59,9 @@ function AppRoutes() {
   const [verificationNotice, setVerificationNotice] = useState('')
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState(
     () => sessionStorage.getItem(PENDING_VERIFICATION_STORAGE_KEY) || '',
+  )
+  const [pendingVerificationPurpose, setPendingVerificationPurpose] = useState(
+    () => sessionStorage.getItem(PENDING_VERIFICATION_PURPOSE_STORAGE_KEY) || 'registration',
   )
   const [isRegistering, setIsRegistering] = useState(false)
   const [isRestoringSession, setIsRestoringSession] = useState(true)
@@ -90,7 +96,7 @@ function AppRoutes() {
         }
       } catch (error) {
         if (!active) return
-        if (error.status === 401) {
+        if (error.status === 401 || error.status === 403) {
           clearAuthToken()
         } else {
           setSignupError(error.message || 'Could not restore your account. Please try again.')
@@ -114,7 +120,9 @@ function AppRoutes() {
   function startOver() {
     clearAuthToken()
     sessionStorage.removeItem(PENDING_VERIFICATION_STORAGE_KEY)
+    sessionStorage.removeItem(PENDING_VERIFICATION_PURPOSE_STORAGE_KEY)
     setPendingVerificationEmail('')
+    setPendingVerificationPurpose('registration')
     setProfile(initialProfile)
     navigate('/')
   }
@@ -133,6 +141,8 @@ function AppRoutes() {
       }))
       setPendingVerificationEmail(result.student.email)
       sessionStorage.setItem(PENDING_VERIFICATION_STORAGE_KEY, result.student.email)
+      setPendingVerificationPurpose('registration')
+      sessionStorage.setItem(PENDING_VERIFICATION_PURPOSE_STORAGE_KEY, 'registration')
       setVerificationNotice(result.emailSent === false ? result.message : '')
       navigate('/signup/verify-email')
     } catch (error) {
@@ -156,8 +166,23 @@ function AppRoutes() {
       }))
       setPendingVerificationEmail('')
       sessionStorage.removeItem(PENDING_VERIFICATION_STORAGE_KEY)
+      sessionStorage.removeItem(PENDING_VERIFICATION_PURPOSE_STORAGE_KEY)
       setVerificationNotice('')
-      navigate('/signup/campus')
+      if (pendingVerificationPurpose === 'existing-account') {
+        const currentStudent = await getCurrentStudent()
+        setProfile({
+          ...initialProfile,
+          fullName: currentStudent.fullName || student.fullName,
+          email: currentStudent.email || student.email || '',
+          phone: currentStudent.phone || student.phone || '',
+          ...(currentStudent.onboarding || {}),
+        })
+        setPendingVerificationPurpose('registration')
+        navigate('/home')
+      } else {
+        setPendingVerificationPurpose('registration')
+        navigate('/signup/campus')
+      }
     } catch (error) {
       setSignupError(error.message || 'Email verification failed. Please try again.')
     } finally {
@@ -167,6 +192,23 @@ function AppRoutes() {
 
   async function handleSignIn(credentials) {
     const student = await loginStudent(credentials)
+    if (student.verificationRequired) {
+      setProfile({
+        ...initialProfile,
+        fullName: student.student.fullName,
+        email: student.student.email || '',
+        phone: student.student.phone || '',
+      })
+      setPendingVerificationEmail(student.student.email)
+      setPendingVerificationPurpose('existing-account')
+      sessionStorage.setItem(PENDING_VERIFICATION_STORAGE_KEY, student.student.email)
+      sessionStorage.setItem(PENDING_VERIFICATION_PURPOSE_STORAGE_KEY, 'existing-account')
+      setVerificationNotice('Verify your email to unlock your account and continue.')
+      setSignupError('')
+      navigate('/home')
+      return
+    }
+
     const currentStudent = await getCurrentStudent()
     setProfile({
       ...initialProfile,
@@ -176,6 +218,13 @@ function AppRoutes() {
       ...(currentStudent.onboarding || {}),
     })
     navigate('/home')
+  }
+
+  async function handleResendPendingVerification() {
+    setSignupError('')
+    const result = await resendStudentVerification(pendingVerificationEmail)
+    setVerificationNotice(result.message)
+    return result
   }
 
   async function handleCompleteOnboarding() {
@@ -218,15 +267,35 @@ function AppRoutes() {
     )
   }
 
-  const dashboard = profile.fullName
-    ? <DashboardExperience onLogout={startOver} onSaveGoal={handleSaveGoal} profile={profile} />
-    : <Navigate to="/login" replace />
+  const verificationRequired = (
+    pendingVerificationPurpose === 'existing-account' && Boolean(pendingVerificationEmail)
+  )
+  const dashboard = verificationRequired
+    ? (
+      <DashboardExperience
+        isVerifying={isRegistering}
+        onLogout={startOver}
+        onResendVerification={handleResendPendingVerification}
+        onSaveGoal={handleSaveGoal}
+        onVerify={handleEmailVerification}
+        profile={profile}
+        verificationEmail={pendingVerificationEmail}
+        verificationError={signupError}
+        verificationNotice={verificationNotice}
+        verificationRequired
+      />
+    )
+    : profile.fullName
+      ? <DashboardExperience onLogout={startOver} onSaveGoal={handleSaveGoal} profile={profile} />
+      : <Navigate to="/login" replace />
 
   return (
     <Routes>
-      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/home" element={dashboard} />
-      <Route path="/guardian/invite" element={<GuardianInvitePage />} />
+      <Route
+        path="/guardian/invite"
+        element={verificationRequired ? dashboard : <GuardianInvitePage />}
+      />
       <Route path="/money/*" element={dashboard} />
       <Route path="/growth/*" element={dashboard} />
       <Route path="/future/*" element={dashboard} />
@@ -234,13 +303,17 @@ function AppRoutes() {
       <Route path="/roadmap" element={<Navigate to="/future" replace />} />
       <Route
         path="/goals/invite"
-        element={profile.fullName ? <InviteGuardianPage /> : <Navigate to="/login" replace />}
+        element={verificationRequired
+          ? dashboard
+          : profile.fullName ? <InviteGuardianPage /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/goals"
-        element={profile.fullName
-          ? <GrowthUnlockPage onInvite={() => navigate('/goals/invite')} />
-          : <Navigate to="/login" replace />}
+        element={verificationRequired
+          ? dashboard
+          : profile.fullName
+            ? <GrowthUnlockPage onInvite={() => navigate('/goals/invite')} />
+            : <Navigate to="/login" replace />}
       />
       <Route path="/learn" element={dashboard} />
       <Route
@@ -262,14 +335,28 @@ function AppRoutes() {
           <SignInPage
             onBack={() => navigate('/')}
             onCreateAccount={() => navigate('/signup/details')}
+            onForgotPassword={() => navigate('/forgot-password')}
             onSubmit={handleSignIn}
           />
         )}
       />
-      <Route path="/signup" element={<Navigate to="/signup/details" replace />} />
+      <Route
+        path="/forgot-password"
+        element={(
+          <PasswordRecoveryPage
+            onBackToLogin={() => navigate('/login')}
+            onRequestCode={requestStudentPasswordReset}
+            onResetPassword={resetStudentPassword}
+          />
+        )}
+      />
+      <Route
+        path="/signup"
+        element={verificationRequired ? dashboard : <Navigate to="/signup/details" replace />}
+      />
       <Route
         path="/signup/details"
-        element={(
+        element={verificationRequired ? dashboard : (
           <StudentDetailsPage
             error={signupError}
             isSubmitting={isRegistering}
@@ -283,7 +370,7 @@ function AppRoutes() {
       />
       <Route
         path="/signup/verify-email"
-        element={pendingVerificationEmail ? (
+        element={verificationRequired ? dashboard : pendingVerificationEmail ? (
           <EmailVerificationPage
             email={pendingVerificationEmail}
             error={signupError}
@@ -296,7 +383,9 @@ function AppRoutes() {
       />
       <Route
         path="/signup/campus"
-        element={hasAuthToken() && profile.fullName ? (
+        element={verificationRequired
+          ? dashboard
+          : hasAuthToken() && profile.fullName ? (
           <CampusDetailsPage
             graduationYears={graduationYears}
             onBack={() => navigate('/signup/details')}
@@ -308,7 +397,9 @@ function AppRoutes() {
       />
       <Route
         path="/signup/goal"
-        element={hasAuthToken() && profile.institution ? (
+        element={verificationRequired
+          ? dashboard
+          : hasAuthToken() && profile.institution ? (
           <GoalSetupPage
             onBack={() => navigate('/signup/campus')}
             onChange={updateProfile}
@@ -319,7 +410,9 @@ function AppRoutes() {
       />
       <Route
         path="/signup/savings-plan"
-        element={hasAuthToken() && profile.goalAmount ? (
+        element={verificationRequired
+          ? dashboard
+          : hasAuthToken() && profile.goalAmount ? (
           <SavingsPlanPage
             onAmountChange={(value) => setProfile((currentProfile) => ({
               ...currentProfile,
@@ -334,7 +427,9 @@ function AppRoutes() {
       />
       <Route
         path="/signup/complete"
-        element={hasAuthToken() && profile.fullName && profile.contribution && profile.cadence ? (
+        element={verificationRequired
+          ? dashboard
+          : hasAuthToken() && profile.fullName && profile.contribution && profile.cadence ? (
           <ProfilePreviewPage
             error={signupError}
             isSubmitting={isSavingOnboarding}

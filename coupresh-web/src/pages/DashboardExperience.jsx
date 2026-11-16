@@ -1338,13 +1338,99 @@ function ProfileScreen({ profile, navigate, onLogout }) {
       <Header title="Profile & Settings" backTo="/home" />
       <div className="experience-body profile-body">
         <Card className="member-card"><span className="member-avatar">{initials}</span><div><h2>{name}</h2><p>CoupreshFund Member</p><span className="level-chip">Level 3</span></div></Card>
-        <Card className="settings-list">{rows.map(([icon, title, detail]) => <div key={title}><button aria-expanded={expanded === title} className="settings-row" onClick={() => setExpanded(expanded === title ? '' : title)} type="button"><Icon name={icon} /><strong>{title}</strong><Icon name="chevron" size={19} /></button>{expanded === title && <div className="settings-detail">{detail}{title === 'Supporters & Family' && <button className="text-button" onClick={() => navigate('/goals/invite')} type="button">Invite a supporter</button>}</div>}</div>)}<button className="settings-row logout-row" onClick={onLogout} type="button"><Icon name="logout" /><strong>Log Out</strong></button></Card>
+        <Card className="settings-list">{rows.map(([icon, title, detail]) => <div key={title}><button aria-expanded={expanded === title} className="settings-row" onClick={() => setExpanded(expanded === title ? '' : title)} type="button"><Icon name={icon} /><strong>{title}</strong><Icon name="chevron" size={19} /></button>{expanded === title && <div className={`settings-detail${title === 'Help & Support' ? ' support-detail' : ''}`}>{title === 'Help & Support' ? <><p>Call us: <a href="tel:+2348175605354">+2348175605354</a></p><p>Call us: <a href="tel:+2347065652771">+2347065652771</a></p><p>Email us: <a href="mailto:contact@coupreshfunds.com">contact@coupreshfunds.com</a></p></> : detail}{title === 'Supporters & Family' && <button className="text-button" onClick={() => navigate('/goals/invite')} type="button">Invite a supporter</button>}</div>}</div>)}<button className="settings-row logout-row" onClick={onLogout} type="button"><Icon name="logout" /><strong>Log Out</strong></button></Card>
       </div>
     </>
   )
 }
 
-export default function DashboardExperience({ profile, onLogout, onSaveGoal }) {
+function VerificationRequiredDashboard({
+  isVerifying,
+  onLogout,
+  onResendVerification,
+  onVerify,
+  verificationEmail,
+  verificationError,
+  verificationNotice,
+}) {
+  const [code, setCode] = useState('')
+  const [sendError, setSendError] = useState('')
+  const [isSending, setIsSending] = useState(false)
+
+  async function handleSendVerification() {
+    setSendError('')
+    setIsSending(true)
+    try {
+      await onResendVerification()
+    } catch (error) {
+      setSendError(error.message || 'Could not send a verification code. Please try again.')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    await onVerify(code.trim())
+  }
+
+  return (
+    <main className="experience-screen">
+      <div className="experience-page">
+        <div className="experience-scroller">
+          <Header title="Account verification" />
+          <section aria-labelledby="verification-gate-title" className="experience-card verification-gate">
+            <span className="verification-gate-icon"><Icon name="lock" size={30} /></span>
+            <h2 id="verification-gate-title">Verify your email to continue</h2>
+            <p>
+              Your account is waiting for email verification. Verify {verificationEmail} to unlock your
+              dashboard and continue.
+            </p>
+            <StatusNotice>{verificationNotice}</StatusNotice>
+            {sendError && <p className="verification-gate-error" role="alert">{sendError}</p>}
+            <button
+              className="primary-button full-button"
+              disabled={isSending}
+              onClick={handleSendVerification}
+              type="button"
+            >
+              {isSending ? 'Sending code…' : 'Send verification code'}
+            </button>
+            <form className="verification-gate-form" onSubmit={handleSubmit}>
+              <label htmlFor="dashboardVerificationCode">Six-digit verification code</label>
+              <input
+                autoComplete="one-time-code"
+                id="dashboardVerificationCode"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+                pattern="[0-9]{6}"
+                placeholder="Enter code"
+                required
+                value={code}
+              />
+              {verificationError && (
+                <p className="verification-gate-error" role="alert">{verificationError}</p>
+              )}
+              <button
+                className="primary-button full-button"
+                disabled={isVerifying || code.length !== 6}
+                type="submit"
+              >
+                {isVerifying ? 'Verifying…' : 'Verify email'}
+              </button>
+            </form>
+          </section>
+          <button className="secondary-button full-button verification-gate-logout" onClick={onLogout} type="button">
+            Log out
+          </button>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [notice, setNotice] = useState('')
@@ -1419,4 +1505,13 @@ export default function DashboardExperience({ profile, onLogout, onSaveGoal }) {
       </div>
     </main>
   )
+}
+
+export default function DashboardExperience({
+  verificationRequired = false,
+  ...props
+}) {
+  return verificationRequired
+    ? <VerificationRequiredDashboard {...props} />
+    : <DashboardExperienceContent {...props} />
 }

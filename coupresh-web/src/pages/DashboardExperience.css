@@ -1271,6 +1271,21 @@ button.experience-list-row {
   text-align: left;
 }
 
+.support-detail {
+  display: grid;
+  gap: 5px;
+}
+
+.support-detail p {
+  margin: 0;
+}
+
+.support-detail a {
+  color: #08764d;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .settings-row.logout-row {
   border-bottom: 0;
   color: #e83c3c;
@@ -1283,6 +1298,66 @@ button.experience-list-row {
   color: #16583b;
   background: #e3f4ed;
   font-size: 12px;
+}
+
+.verification-gate {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.verification-gate-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 16px;
+  color: #075e3f;
+  background: #e3f4ed;
+}
+
+.verification-gate h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.verification-gate > p {
+  margin: 0;
+  color: #66746d;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.verification-gate-form {
+  display: grid;
+  gap: 10px;
+}
+
+.verification-gate-form label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.verification-gate-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid #cbd8d1;
+  border-radius: 12px;
+  color: #172a22;
+  background: #fff;
+  font: inherit;
+}
+
+.verification-gate-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.verification-gate-logout {
+  margin-top: 12px;
 }
 
 .experience-modal-backdrop {
