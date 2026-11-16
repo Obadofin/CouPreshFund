@@ -37,9 +37,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_APP_PASSWORD.replace(/\s/g, ''),
     },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
+    connectionTimeout: 60000,
+    greetingTimeout: 60000,
+    socketTimeout: 60000,
   });
 
   try {

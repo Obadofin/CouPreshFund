@@ -1,0 +1,52 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/800.css';
+
+:root {
+  font-family: 'Inter', sans-serif;
+  color: #17251d;
+  background: #f7f9f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 400;
+  color-scheme: light;
+
+  --green-900: #06452f;
+  --green-800: #075b3e;
+  --green-700: #08764d;
+  --green-600: #0c8a5b;
+  --yellow: #f2ca36;
+  --ink: #17251d;
+  --muted: #6e7b72;
+  --surface: #f7f9f6;
+  --line: #e1e7e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+::selection {
+  color: #fff;
+  background: var(--green-700);
+}
