@@ -385,7 +385,7 @@ function AppRoutes() {
         path="/signup/campus"
         element={verificationRequired
           ? dashboard
-          : hasAuthToken() && profile.fullName ? (
+          : hasAuthToken() ? (
           <CampusDetailsPage
             graduationYears={graduationYears}
             onBack={() => navigate('/signup/details')}
