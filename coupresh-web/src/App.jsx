@@ -379,7 +379,12 @@ function AppRoutes() {
             onResend={() => resendStudentVerification(pendingVerificationEmail)}
             onVerify={handleEmailVerification}
           />
-        ) : <Navigate to="/signup/details" replace />}
+        ) : hasAuthToken()
+          ? <Navigate
+              to={pendingVerificationPurpose === 'existing-account' ? '/home' : '/signup/campus'}
+              replace
+            />
+          : <Navigate to="/signup/details" replace />}
       />
       <Route
         path="/signup/campus"
