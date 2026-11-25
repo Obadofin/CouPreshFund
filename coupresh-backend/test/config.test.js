@@ -20,9 +20,14 @@ test('loads PostgreSQL and API configuration with the default HTTP port', () => 
       password: 'test_password',
       host: 'localhost',
       port: 5432,
+      ssl: false,
     },
     jwtSecret: 'test-secret',
   });
+});
+
+test('enables PostgreSQL TLS when DB_SSL is true', () => {
+  assert.equal(getConfig({ ...validEnv, DB_SSL: 'true' }).database.ssl, true);
 });
 
 test('reports missing environment variable names without exposing values', () => {

@@ -263,7 +263,7 @@ const createGuardianAuthRouter = ({
       }
 
       return res.json({
-        message: 'Student account linked successfully. Student data access is not available yet.',
+        message: 'Student account linked successfully.',
         linked: true,
       });
     } catch (error) {

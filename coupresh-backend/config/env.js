@@ -24,6 +24,7 @@ const getConfig = (env = process.env) => {
       password: env.DB_PASSWORD,
       host: env.DB_HOST,
       port: parsePort(env.DB_PORT, 'DB_PORT'),
+      ssl: env.DB_SSL === 'true',
     },
     jwtSecret: env.JWT_SECRET,
   };

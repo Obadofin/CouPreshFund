@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Student = require('./Student');
+const Guardian = require('./Guardian');
 
 const SavingsContribution = sequelize.define('SavingsContribution', {
   id: {
@@ -14,6 +15,15 @@ const SavingsContribution = sequelize.define('SavingsContribution', {
     references: {
       model: Student,
       key: 'id',
+    },
+    recordedByGuardianId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: Guardian,
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
     },
     onDelete: 'CASCADE',
   },
@@ -45,6 +55,10 @@ Student.hasMany(SavingsContribution, {
 });
 SavingsContribution.belongsTo(Student, {
   foreignKey: 'studentId',
+});
+SavingsContribution.belongsTo(Guardian, {
+  as: 'recordedByGuardian',
+  foreignKey: 'recordedByGuardianId',
 });
 
 module.exports = SavingsContribution;

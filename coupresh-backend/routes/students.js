@@ -70,7 +70,7 @@ const serializeContribution = (contribution) => ({
   id: contribution.id,
   amount: Number(contribution.amount),
   note: contribution.note,
-  source: contribution.source,
+  source: contribution.recordedByGuardianId ? 'guardian_support' : contribution.source,
   createdAt: contribution.createdAt,
 });
 
@@ -91,6 +91,7 @@ const createStudentRouter = ({
   BudgetModel = StudentBudget,
   ExpenseModel = StudentExpense,
   LessonProgressModel = StudentLessonProgress,
+  LessonModel,
   PointsModel = StudentPointTransaction,
 } = {}) => {
   const router = express.Router();
@@ -120,7 +121,12 @@ const createStudentRouter = ({
       if (!student) {
         return res.status(404).json({ message: 'Student not found' });
       }
-      if (!lessons.some((lesson) => lesson.id === req.params.lessonId)) {
+      const lesson = LessonModel
+        ? await LessonModel.findOne({
+          where: { id: req.params.lessonId, isPublished: true },
+        })
+        : lessons.find((item) => item.id === req.params.lessonId);
+      if (!lesson) {
         return res.status(404).json({ message: 'Lesson not found' });
       }
 
@@ -148,7 +154,7 @@ const createStudentRouter = ({
             sourceId: req.params.lessonId,
           },
           defaults: {
-            description: `Completed ${lessons.find((lesson) => lesson.id === req.params.lessonId).title}`,
+            description: `Completed ${lesson.title}`,
             points: 100,
           },
         });

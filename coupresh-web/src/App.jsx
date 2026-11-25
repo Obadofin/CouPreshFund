@@ -4,6 +4,7 @@ import CampusDetailsPage from './pages/CampusDetailsPage.jsx'
 import DashboardExperience from './pages/DashboardExperience.jsx'
 import EmailVerificationPage from './pages/EmailVerificationPage.jsx'
 import GoalSetupPage from './pages/GoalSetupPage.jsx'
+import GuardianDashboardPage from './pages/GuardianDashboardPage.jsx'
 import GuardianInvitePage from './pages/GuardianInvitePage.jsx'
 import GrowthUnlockPage from './pages/GrowthUnlockPage.jsx'
 import InviteGuardianPage from './pages/InviteGuardianPage.jsx'
@@ -296,6 +297,7 @@ function AppRoutes() {
         path="/guardian/invite"
         element={verificationRequired ? dashboard : <GuardianInvitePage />}
       />
+      <Route path="/guardian/dashboard" element={<GuardianDashboardPage />} />
       <Route path="/money/*" element={dashboard} />
       <Route path="/growth/*" element={dashboard} />
       <Route path="/future/*" element={dashboard} />

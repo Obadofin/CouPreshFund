@@ -1,0 +1,334 @@
+.guardian-dashboard-page {
+  min-height: 100svh;
+  padding: clamp(20px, 5vw, 56px);
+  color: #172a22;
+  background: #f3f8f6;
+}
+
+.guardian-login-card {
+  display: grid;
+  width: min(100%, 440px);
+  gap: 16px;
+  margin: 8vh auto;
+  padding: 28px;
+  border: 1px solid #e0e9e5;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 50px #173a2b12;
+}
+
+.guardian-login-card h1,
+.guardian-dashboard-header h1 {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 32px);
+  letter-spacing: -.7px;
+}
+
+.guardian-login-card > p:not(.guardian-eyebrow),
+.guardian-dashboard-header > div > p:last-child {
+  margin: 0;
+  color: #718078;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.guardian-eyebrow {
+  margin: 0 0 6px;
+  color: #547562;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 1px;
+}
+
+.guardian-login-card label,
+.guardian-support-form label {
+  display: grid;
+  gap: 7px;
+  color: #415349;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.guardian-login-card input,
+.guardian-support-form input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d8e2dc;
+  border-radius: 9px;
+  color: #1c3025;
+  background: #fff;
+  font: inherit;
+}
+
+.guardian-dashboard-primary,
+.guardian-dashboard-secondary {
+  padding: 11px 15px;
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.guardian-dashboard-primary {
+  color: #fff;
+  background: #0e6045;
+}
+
+.guardian-dashboard-primary:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.guardian-dashboard-secondary {
+  color: #214434;
+  background: #e6efe9;
+}
+
+.guardian-dashboard-header {
+  display: flex;
+  max-width: 1080px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 auto 24px;
+}
+
+.guardian-dashboard-header > div > p:last-child {
+  margin-top: 6px;
+}
+
+.guardian-rewards-summary,
+.guardian-student-card,
+.guardian-empty-state {
+  max-width: 1080px;
+  margin: 0 auto 18px;
+  padding: 20px;
+  border: 1px solid #e0e9e5;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.guardian-rewards-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #eaf5ee;
+}
+
+.guardian-rewards-summary > div {
+  display: grid;
+  gap: 5px;
+}
+
+.guardian-rewards-summary > div > strong {
+  color: #125c40;
+  font-size: 22px;
+}
+
+.guardian-rewards-summary span,
+.guardian-empty-state p,
+.guardian-contributions > p {
+  color: #718078;
+  font-size: 13px;
+}
+
+.guardian-rewards-summary ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guardian-rewards-summary li {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.guardian-student-list {
+  display: grid;
+  max-width: 1080px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+  margin: 0 auto;
+}
+
+.guardian-student-card {
+  width: 100%;
+  margin: 0;
+}
+
+.guardian-student-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guardian-student-heading h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.guardian-readonly {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #366047;
+  background: #eaf5ee;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.guardian-goal-details {
+  display: grid;
+  gap: 5px;
+  margin-top: 18px;
+}
+
+.guardian-goal-details p {
+  margin: 0;
+  color: #718078;
+  font-size: 12px;
+}
+
+.guardian-goal-details strong {
+  font-size: 14px;
+}
+
+.guardian-goal-progress {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.guardian-goal-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  color: #607066;
+  font-size: 12px;
+}
+
+.guardian-goal-progress > div:first-child strong {
+  color: #14583e;
+}
+
+.guardian-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e7eee9;
+}
+
+.guardian-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1c8058;
+}
+
+.guardian-goal-progress p {
+  margin: 0;
+  color: #617167;
+  font-size: 12px;
+}
+
+.guardian-support-form {
+  display: grid;
+  gap: 11px;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f6f9f7;
+}
+
+.guardian-support-form h3,
+.guardian-contributions h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.guardian-support-form p {
+  margin: -5px 0 0;
+  color: #718078;
+  font-size: 11px;
+}
+
+.guardian-contributions {
+  margin-top: 18px;
+}
+
+.guardian-contributions h3 {
+  margin-bottom: 8px;
+}
+
+.guardian-contribution-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf1ee;
+  font-size: 12px;
+}
+
+.guardian-contribution-row strong {
+  color: #15583f;
+}
+
+.guardian-empty-goal,
+.guardian-empty-state {
+  color: #718078;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guardian-empty-state h2 {
+  margin-bottom: 6px;
+  color: #20362a;
+}
+
+.guardian-dashboard-status {
+  margin: 15vh auto;
+  color: #718078;
+  text-align: center;
+}
+
+.guardian-dashboard-error,
+.guardian-dashboard-success {
+  max-width: 1080px;
+  margin: 0 auto 12px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.guardian-dashboard-error {
+  color: #8b2d26;
+  background: #fff0ed;
+}
+
+.guardian-dashboard-success {
+  color: #175b3e;
+  background: #e7f5eb;
+}
+
+@media (max-width: 560px) {
+  .guardian-dashboard-page {
+    padding: 18px 12px;
+  }
+  .guardian-dashboard-header {
+    align-items: center;
+  }
+  .guardian-rewards-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .guardian-student-card,
+  .guardian-rewards-summary {
+    padding: 16px;
+  }
+}

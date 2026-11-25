@@ -9,6 +9,7 @@ import {
   getStudentExpenses,
   getStudentBudgets,
   getStudentDashboard,
+  getStudentNotifications,
   getStudentPoints,
   getStudentPointTransactions,
   getSkillChallenges,
@@ -22,6 +23,7 @@ import {
   removeSavedOpportunity,
   saveStudentLessonProgress,
   saveStudentBudget,
+  markStudentNotificationRead,
 } from '../utils/authApi.js'
 import formatNaira from '../utils/formatNaira.js'
 import './DashboardExperience.css'
@@ -134,7 +136,7 @@ function getLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
-function HomeScreen({ dashboard, profile, navigate, showNotice }) {
+function HomeScreen({ dashboard, profile, navigate, onOpenNotifications, unreadCount }) {
   const [learnProgress, setLearnProgress] = useState(null)
   const [learnError, setLearnError] = useState('')
   const firstName = profile.fullName?.trim().split(/\s+/)[0] || 'Chidi'
@@ -176,7 +178,7 @@ function HomeScreen({ dashboard, profile, navigate, showNotice }) {
 
   return (
     <>
-      <Header trailing={<div className="home-actions"><button aria-label="Notifications" className="round-action" onClick={() => showNotice('You’re all caught up.')} type="button"><Icon name="bell" /></button><button aria-label="Open profile" className="home-avatar" onClick={() => navigate('/profile')} type="button">{firstName.slice(0, 2).toUpperCase()}</button></div>} />
+      <Header trailing={<div className="home-actions"><button aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} className="round-action notification-action" onClick={onOpenNotifications} type="button"><Icon name="bell" />{unreadCount > 0 && <span className="notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button><button aria-label="Open profile" className="home-avatar" onClick={() => navigate('/profile')} type="button">{firstName.slice(0, 2).toUpperCase()}</button></div>} />
       <div className="experience-body home-body">
         <div className="home-greeting"><h1>Good morning, {firstName}</h1><p>Your future is taking shape.</p></div>
         <section className="journey-banner">
@@ -216,7 +218,7 @@ function HomeScreen({ dashboard, profile, navigate, showNotice }) {
               <ListRow
                 icon="check"
                 key={contribution.id}
-                title={contribution.note || 'Self-reported savings'}
+                title={contribution.note || (contribution.source === 'guardian_support' ? 'Guardian support' : 'Self-reported savings')}
                 detail={new Date(contribution.createdAt).toLocaleDateString('en-NG')}
                 action={<strong className="positive">+{formatNaira(contribution.amount)}</strong>}
               />
@@ -228,7 +230,16 @@ function HomeScreen({ dashboard, profile, navigate, showNotice }) {
   )
 }
 
-function MoneyScreen({ dashboard, profile, navigate, showNotice, onAddContribution, onSaveGoal }) {
+function MoneyScreen({
+  dashboard,
+  profile,
+  navigate,
+  showNotice,
+  onAddContribution,
+  onSaveGoal,
+  onOpenNotifications,
+  unreadCount,
+}) {
   const [tab, setTab] = useState('Graduation Fund')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
@@ -276,7 +287,7 @@ function MoneyScreen({ dashboard, profile, navigate, showNotice, onAddContributi
 
   return (
     <>
-      <Header title="My Money" trailing={<button aria-label="Notifications" className="plain-action" onClick={() => showNotice('You’re all caught up.')} type="button"><Icon name="bell" /></button>} />
+      <Header title="My Money" trailing={<button aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} className="plain-action notification-action" onClick={onOpenNotifications} type="button"><Icon name="bell" />{unreadCount > 0 && <span className="notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>} />
       <div className="experience-body money-body">
         <Segmented label="Money sections" options={['Graduation Fund', 'Budgets', 'Goals']} selected={tab} onSelect={(value) => value === 'Budgets' ? navigate('/money/budget') : setTab(value)} />
         {tab === 'Goals' ? (
@@ -1436,6 +1447,11 @@ function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
   const [notice, setNotice] = useState('')
   const [dashboard, setDashboard] = useState(null)
   const [dashboardVersion, setDashboardVersion] = useState(0)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false)
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
+  const [notificationError, setNotificationError] = useState('')
   const path = location.pathname
 
   useEffect(() => {
@@ -1454,6 +1470,49 @@ function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
     }
   }, [dashboardVersion])
 
+  useEffect(() => {
+    let active = true
+    getStudentNotifications()
+      .then((result) => {
+        if (!active) return
+        setNotifications(result.notifications || [])
+        setUnreadCount(result.unreadCount || 0)
+      })
+      .catch((error) => {
+        if (active) setNotificationError(error.message || 'Could not load notifications.')
+      })
+    return () => { active = false }
+  }, [])
+
+  async function openNotificationCenter() {
+    setIsNotificationCenterOpen(true)
+    setNotificationError('')
+    setIsLoadingNotifications(true)
+    try {
+      const result = await getStudentNotifications()
+      setNotifications(result.notifications || [])
+      setUnreadCount(result.unreadCount || 0)
+    } catch (error) {
+      setNotificationError(error.message || 'Could not load notifications.')
+    } finally {
+      setIsLoadingNotifications(false)
+    }
+  }
+
+  async function markNotificationRead(notificationId) {
+    try {
+      await markStudentNotificationRead(notificationId)
+      setNotifications((current) => current.map((notification) => (
+        notification.id === notificationId
+          ? { ...notification, readAt: new Date().toISOString() }
+          : notification
+      )))
+      setUnreadCount((current) => Math.max(0, current - 1))
+    } catch (error) {
+      setNotificationError(error.message || 'Could not update notification.')
+    }
+  }
+
   async function handleAddContribution(contribution) {
     await addStudentContribution(contribution)
     setDashboardVersion((version) => version + 1)
@@ -1466,8 +1525,8 @@ function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
   }
 
   let screen
-  if (path === '/home') screen = <HomeScreen dashboard={dashboard} profile={profile} navigate={navigate} showNotice={setNotice} />
-  else if (path === '/money') screen = <MoneyScreen dashboard={dashboard} profile={profile} navigate={navigate} showNotice={setNotice} onAddContribution={handleAddContribution} onSaveGoal={handleSaveGoal} />
+  if (path === '/home') screen = <HomeScreen dashboard={dashboard} profile={profile} navigate={navigate} onOpenNotifications={openNotificationCenter} unreadCount={unreadCount} />
+  else if (path === '/money') screen = <MoneyScreen dashboard={dashboard} profile={profile} navigate={navigate} showNotice={setNotice} onAddContribution={handleAddContribution} onSaveGoal={handleSaveGoal} onOpenNotifications={openNotificationCenter} unreadCount={unreadCount} />
   else if (path === '/money/budget') screen = <BudgetScreen navigate={navigate} showNotice={setNotice} />
   else if (path === '/learn') screen = <LearningScreen navigate={navigate} showNotice={setNotice} />
   else if (path === '/growth') screen = <SkillsScreen navigate={navigate} />
@@ -1492,6 +1551,15 @@ function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
       <div className="experience-page">
         <div className="experience-scroller" key={path}>
           {screen}
+          {isNotificationCenterOpen && (
+            <NotificationCenter
+              error={notificationError}
+              isLoading={isLoadingNotifications}
+              notifications={notifications}
+              onClose={() => setIsNotificationCenterOpen(false)}
+              onMarkRead={markNotificationRead}
+            />
+          )}
           <StatusNotice>{notice}</StatusNotice>
         </div>
         <nav aria-label="Main navigation" className="experience-nav">
@@ -1504,6 +1572,41 @@ function DashboardExperienceContent({ profile, onLogout, onSaveGoal }) {
         <span className="experience-sr-only">{sectionTitle}</span>
       </div>
     </main>
+  )
+}
+
+function NotificationCenter({ notifications, error, isLoading, onClose, onMarkRead }) {
+  return (
+    <div className="notification-overlay">
+      <section aria-labelledby="notification-center-title" aria-modal="true" className="notification-center" role="dialog">
+        <header className="notification-center-header">
+          <div><p className="eyebrow">YOUR ACCOUNT</p><h2 id="notification-center-title">Notifications</h2></div>
+          <button aria-label="Close notifications" className="notification-close" onClick={onClose} type="button">×</button>
+        </header>
+        {error && <p className="dashboard-inline-error" role="alert">{error}</p>}
+        {isLoading ? <p className="notification-empty">Loading notifications…</p>
+          : notifications.length
+            ? (
+              <ul className="notification-list">
+                {notifications.map((notification) => (
+                  <li className={notification.readAt ? '' : 'is-unread'} key={notification.id}>
+                    <div className="notification-copy">
+                      <strong>{notification.title}</strong>
+                      <p>{notification.message}</p>
+                      <small>{new Date(notification.createdAt).toLocaleDateString()}</small>
+                    </div>
+                    {!notification.readAt && (
+                      <button className="notification-mark-read" onClick={() => onMarkRead(notification.id)} type="button">
+                        Mark read
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )
+            : <p className="notification-empty">You’re all caught up.</p>}
+      </section>
+    </div>
   )
 }
 

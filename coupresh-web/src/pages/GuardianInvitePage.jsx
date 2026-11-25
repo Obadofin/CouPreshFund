@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   acceptGuardianInvitation,
   loginGuardian,
@@ -9,6 +9,7 @@ import {
 } from '../utils/authApi.js'
 
 export default function GuardianInvitePage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [inviteCode, setInviteCode] = useState(searchParams.get('code') || '')
   const [mode, setMode] = useState('login')
@@ -45,6 +46,7 @@ export default function GuardianInvitePage() {
         })
         setIsLinked(result.linked)
         setMessage(result.message)
+        if (result.linked) navigate('/guardian/dashboard')
       } else {
         const guardianEmail = String(formData.get('email')).trim()
         try {
@@ -63,6 +65,7 @@ export default function GuardianInvitePage() {
         const result = await acceptGuardianInvitation(inviteCode.trim())
         setIsLinked(result.linked)
         setMessage(result.message)
+        if (result.linked) navigate('/guardian/dashboard')
       }
     } catch (requestError) {
       setError(requestError.message || 'Could not complete the guardian invitation.')

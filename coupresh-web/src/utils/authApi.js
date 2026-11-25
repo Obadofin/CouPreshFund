@@ -190,6 +190,17 @@ export async function getStudentContributions(limit = 20) {
   return request(`/students/me/contributions?limit=${encodeURIComponent(limit)}`)
 }
 
+export async function getStudentNotifications() {
+  return request('/students/me/notifications')
+}
+
+export async function markStudentNotificationRead(notificationId) {
+  return request(
+    `/students/me/notifications/${encodeURIComponent(notificationId)}/read`,
+    { method: 'PATCH' },
+  )
+}
+
 export async function addStudentContribution({ amount, note }) {
   return request('/students/me/contributions', {
     method: 'POST',
@@ -377,6 +388,30 @@ export async function acceptGuardianInvitation(inviteCode) {
     method: 'POST',
     body: JSON.stringify({ inviteCode }),
   }, GUARDIAN_TOKEN_STORAGE_KEY)
+}
+
+export async function getGuardianStudents() {
+  const result = await request('/guardian/me/students', {}, GUARDIAN_TOKEN_STORAGE_KEY)
+  return result.students
+}
+
+export async function addGuardianSupportContribution({ studentId, amount, note }) {
+  return request(
+    `/guardian/me/students/${encodeURIComponent(studentId)}/contributions`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ amount: Number(amount), ...(note ? { note } : {}) }),
+    },
+    GUARDIAN_TOKEN_STORAGE_KEY,
+  )
+}
+
+export async function getGuardianRewards() {
+  return request('/guardian/me/rewards', {}, GUARDIAN_TOKEN_STORAGE_KEY)
+}
+
+export function hasGuardianAuthToken() {
+  return Boolean(localStorage.getItem(GUARDIAN_TOKEN_STORAGE_KEY))
 }
 
 export function clearGuardianAuthToken() {

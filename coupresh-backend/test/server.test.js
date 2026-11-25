@@ -11,6 +11,8 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 const createApp = require('../app');
 const {
   ensureGuardianInvitationGuardianColumn,
+  ensureGuardianContributionRecorderColumn,
+  ensureStudentAdminColumns,
   ensureStudentChallengeStepsColumn,
   ensureStudentVerificationColumns,
   startServer,
@@ -122,6 +124,47 @@ test('adds the guardian relationship column to existing invitation tables', asyn
         calls.push(['add', table, column, options.allowNull, options.onDelete]);
       },
     }),
+  });
+
+  test('adds account suspension and session version columns for existing students', async () => {
+    const calls = [];
+    await ensureStudentAdminColumns({
+      getQueryInterface: () => ({
+        describeTable: async (table) => {
+          calls.push(['describe', table]);
+          return { id: {} };
+        },
+        addColumn: async (table, column, options) => {
+          calls.push(['add', table, column, options.allowNull, options.defaultValue]);
+        },
+      }),
+    });
+
+    assert.deepEqual(calls, [
+      ['describe', 'Students'],
+      ['add', 'Students', 'accountStatus', false, 'active'],
+      ['add', 'Students', 'authVersion', false, 0],
+    ]);
+  });
+
+  test('adds guardian attribution to existing savings contributions', async () => {
+    const calls = [];
+    await ensureGuardianContributionRecorderColumn({
+      getQueryInterface: () => ({
+        describeTable: async (table) => {
+          calls.push(['describe', table]);
+          return { id: {}, studentId: {} };
+        },
+        addColumn: async (table, column, options) => {
+          calls.push(['add', table, column, options.allowNull, options.onDelete]);
+        },
+      }),
+    });
+
+    assert.deepEqual(calls, [
+      ['describe', 'SavingsContributions'],
+      ['add', 'SavingsContributions', 'recordedByGuardianId', true, 'SET NULL'],
+    ]);
   });
 
   assert.deepEqual(calls, [

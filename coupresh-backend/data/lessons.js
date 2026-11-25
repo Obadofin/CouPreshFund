@@ -66,7 +66,11 @@ const lessons = [
   },
 ];
 
-const publicLesson = ({ content, ...lesson }) => lesson;
+const publicLesson = (lesson) => {
+  const value = typeof lesson.get === 'function' ? lesson.get({ plain: true }) : lesson;
+  const { content, ...summary } = value;
+  return summary;
+};
 
 module.exports = {
   lessons,

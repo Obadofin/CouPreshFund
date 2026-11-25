@@ -11,25 +11,44 @@ require('./models/StudentPointTransaction');
 require('./models/GuardianInvitation');
 require('./models/Guardian');
 require('./models/StudentOpportunitySave');
+require('./models/Admin');
+require('./models/AdminAuditLog');
+require('./models/LearningContent');
+require('./models/PlatformMilestone');
+require('./models/NotificationCampaign');
+require('./models/StudentNotification');
+require('./models/GuardianRewardTransaction');
+require('./models/NotificationSuppression');
 const authRoutes = require('./routes/auth');
 const googleOAuthRoutes = require('./routes/googleOAuth');
 const createGuardianAuthRouter = require('./routes/guardianAuth');
-const learningRoutes = require('./routes/learning');
+const createGuardianRouter = require('./routes/guardian');
+const createNotificationRouter = require('./routes/notifications');
+const createAdminAuthRouter = require('./routes/adminAuth');
+const createAdminRouter = require('./routes/admin');
+const createLearningRouter = require('./routes/learning');
 const createSkillsRouter = require('./routes/skills');
 const createPointsRouter = require('./routes/points');
 const createOpportunitiesRouter = require('./routes/opportunities');
 const createGuardianInvitationsRouter = require('./routes/guardianInvitations');
 const createStudentRouter = require('./routes/students');
+const { runInactivityCampaign } = require('./services/inactivityCampaign');
 
 const defaultAllowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
 ];
 
 const createApp = ({
   database = sequelize,
   studentModels,
   guardianModels,
+  adminModels,
+  contentModels,
+  notificationModels,
+  runCampaign = runInactivityCampaign,
   allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
     : defaultAllowedOrigins,
@@ -51,7 +70,7 @@ const createApp = ({
         return res.status(403).json({ message: 'Origin not allowed' });
       }
 
-      res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       return res.sendStatus(204);
     }
@@ -63,7 +82,23 @@ const createApp = ({
   app.use(googleOAuthRoutes);
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/guardian-auth', createGuardianAuthRouter(guardianModels));
-  app.use('/api/v1/learning', learningRoutes);
+  app.use('/api/v1/guardian', createGuardianRouter({
+    ...studentModels,
+    ...guardianModels,
+    ProfileModel: studentModels?.StudentProfileModel,
+    RewardModel: guardianModels?.GuardianRewardModel,
+  }));
+  app.use('/api/v1/admin-auth', createAdminAuthRouter(adminModels));
+  app.use('/api/v1/admin', createAdminRouter({
+    ...studentModels,
+    ...guardianModels,
+    ...adminModels,
+    ...contentModels,
+    ...notificationModels,
+    runCampaign,
+  }));
+  app.use('/api/v1/learning', createLearningRouter(contentModels));
+  app.use('/api/v1/students', createNotificationRouter(notificationModels));
   app.use('/api/v1', createSkillsRouter(studentModels));
   app.use('/api/v1/students', createPointsRouter(studentModels));
   app.use('/api/v1/opportunities', createOpportunitiesRouter(studentModels));
@@ -71,7 +106,10 @@ const createApp = ({
     ...studentModels,
     ...guardianModels,
   }));
-  app.use('/api/v1/students', createStudentRouter(studentModels));
+  app.use('/api/v1/students', createStudentRouter({
+    ...studentModels,
+    LessonModel: contentModels?.LearningContentModel,
+  }));
 
   app.get('/api/v1/health', (req, res) => {
     res.json({ status: 'ok', message: 'CouPreshFund API is running' });

@@ -13,6 +13,7 @@ Express API backed by PostgreSQL and Sequelize.
 2. Copy `.env.example` to `.env` and set your local database credentials, a private JWT secret, and Gmail API OAuth settings.
 3. Install dependencies with `npm ci`.
 4. Start the API with `npm start`.
+5. After the server has created the tables, provision the first admin from a trusted terminal using `npm run create-admin`. Set `ADMIN_INITIAL_NAME`, `ADMIN_INITIAL_EMAIL`, and `ADMIN_INITIAL_PASSWORD` in the terminal environment first; the initial password must be at least 12 characters. The script creates a `super_admin` and does not expose a public admin-registration endpoint.
 
 The server validates its required database and JWT environment variables before starting. Email registration uses the Gmail API over HTTPS and requires a refresh token for the Gmail account configured as `GMAIL_USER`. It checks the PostgreSQL connection and synchronizes the Sequelize models before listening. Startup failures are logged and cause a non-zero process exit.
 
@@ -29,6 +30,7 @@ Never commit `.env` or use credentials copied from another branch. Keep `.env.ex
 | `DB_PASSWORD` | Yes | PostgreSQL password |
 | `DB_HOST` | Yes | PostgreSQL host |
 | `DB_PORT` | Yes | PostgreSQL port |
+| `DB_SSL` | No | Set to `true` to require verified TLS for PostgreSQL connections |
 | `JWT_SECRET` | Yes | Private secret used to sign authentication tokens |
 | `GOOGLE_CLIENT_ID` | For email registration and OAuth setup | OAuth 2.0 client ID from Google Cloud |
 | `GOOGLE_CLIENT_SECRET` | For email registration and OAuth setup | OAuth 2.0 client secret; keep private |
@@ -38,7 +40,7 @@ Never commit `.env` or use credentials copied from another branch. Keep `.env.ex
 | `OAUTH_SETUP_SECRET` | Temporarily, for OAuth setup/testing | Random setup secret of at least 32 bytes; remove after authorization and testing |
 
 Use a long, randomly generated `JWT_SECRET` in local and deployed environments.
-For deployment, set `CORS_ORIGINS` to the exact frontend origin (for example, `https://your-site.onrender.com`) and include local origins only if local browser development is needed. Native mobile API requests do not rely on browser CORS.
+For deployment, set `CORS_ORIGINS` to the exact origins of both browser apps (the student frontend and the separately hosted admin frontend) and include local origins only if local browser development is needed. Native mobile API requests do not rely on browser CORS.
 
 ## API
 
@@ -88,8 +90,35 @@ All routes are versioned under `/api/v1`.
 | `POST` | `/api/v1/guardian-auth/resend-verification` | Resend guardian email verification code |
 | `POST` | `/api/v1/guardian-auth/login` | Sign in to an existing verified guardian account |
 | `POST` | `/api/v1/guardian-auth/accept-invitation` | Link a signed-in guardian account using a student's invite code |
+| `GET` | `/api/v1/guardian/me/students` | Read goals and progress for students linked to the guardian |
+| `GET` | `/api/v1/guardian/me/students/:studentId` | Read one linked student's goal and recent contributions |
+| `POST` | `/api/v1/guardian/me/students/:studentId/contributions` | Record a guardian support contribution (does not move money) |
+| `GET` | `/api/v1/guardian/me/rewards` | Read guardian reward points and history |
+| `GET` | `/api/v1/students/me/notifications` | List dashboard notifications and unread count |
+| `PATCH` | `/api/v1/students/me/notifications/:notificationId/read` | Mark an owned dashboard notification as read |
+| `POST` | `/api/v1/admin-auth/login` | Sign in to the separate admin frontend |
+| `GET` | `/api/v1/admin-auth/me` | Return the authenticated admin |
+| `GET` | `/api/v1/admin/overview` | Platform counts and savings summary |
+| `GET` | `/api/v1/admin/users` | Search and list student accounts |
+| `PATCH` | `/api/v1/admin/users/:studentId/status` | Activate or suspend a student account |
+| `GET`, `POST` | `/api/v1/admin/content` | List or create learning lessons |
+| `PUT`, `DELETE` | `/api/v1/admin/content/:contentId` | Update or delete a learning lesson |
+| `GET`, `POST` | `/api/v1/admin/milestones` | List or create platform milestone definitions |
+| `PUT`, `DELETE` | `/api/v1/admin/milestones/:milestoneId` | Update or delete a milestone |
+| `GET` | `/api/v1/admin/campaigns` | List notification campaigns |
+| `PATCH` | `/api/v1/admin/campaigns/:campaignId` | Pause or resume scheduled sends |
+| `POST` | `/api/v1/admin/campaigns/:campaignId/run` | Manually run an inactivity campaign |
+| `GET`, `POST` | `/api/v1/admin/campaigns/:campaignId/suppressions` | List suppressions or suppress a student |
+| `DELETE` | `/api/v1/admin/campaigns/:campaignId/suppressions/:studentId` | Restore a student to a campaign |
+| `GET` | `/api/v1/admin/guardians` | List guardian accounts |
+| `POST` | `/api/v1/admin/guardians/:guardianId/rewards` | Award guardian reward points with a recorded reason |
+| `GET` | `/api/v1/admin/audit-log` | Review recent administrative actions |
 
 Errors use JSON responses with a `message` field. Internal server errors do not return implementation or database details.
+
+The initial admin account is created only by the backend provisioning script. Admin endpoints require a separate admin JWT; student and guardian tokens cannot access them. Content-manager admins can manage learning content and milestones, while admin and super-admin roles can manage accounts, analytics, campaigns, and guardian rewards.
+
+The savings inactivity campaign is initialized on backend startup and checked hourly. It records a dashboard notification and sends an email at each 14-, 21-, and 30-day stage, one stage at a time. Email failures remain visible in the dashboard and are retried; campaign/stage records prevent duplicate notifications. A new student-recorded contribution starts a new inactivity cycle. Guardian support records contribute to the goal but do not reset the student's inactivity timer.
 
 Registration requires a valid email address. A phone number is optional; when supplied, it must be a valid Nigerian number in `08012345678` or `+2348012345678` format. New accounts remain inactive until the six-digit code sent by the Gmail API to their email is verified. Codes expire after 10 minutes, allow at most five incorrect attempts, and can be resent once per minute. No development or QA mode returns OTPs to clients; local, QA, and production registrations all use real email delivery. No SMS verification is performed.
 

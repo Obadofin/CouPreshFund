@@ -21,6 +21,16 @@ const Student = sequelize.define('Student', {
     allowNull: false,
     defaultValue: false,
   },
+  accountStatus: {
+    type: DataTypes.ENUM('active', 'suspended'),
+    allowNull: false,
+    defaultValue: 'active',
+  },
+  authVersion: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
   emailVerifiedAt: {
     type: DataTypes.DATE,
     allowNull: true,

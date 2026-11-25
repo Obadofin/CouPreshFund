@@ -75,6 +75,22 @@ test('allows configured browser origins and handles CORS preflight', async () =>
   });
 });
 
+test('allows the local admin frontend origin by default', async () => {
+  const app = createApp({ database: { authenticate: async () => {} } });
+
+  await withServer(app, async (baseUrl) => {
+    const preflight = await fetch(`${baseUrl}/api/v1/admin-auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:5174',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), 'http://localhost:5174');
+  });
+});
+
 test('readiness failure does not expose database error details', async () => {
   const app = createApp({
     database: { authenticate: async () => { throw new Error('private database detail'); } },

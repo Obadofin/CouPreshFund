@@ -147,7 +147,11 @@ router.post('/verify-email', verifyEmailRules, async (req, res) => {
     await student.save();
 
     const token = jwt.sign(
-      { id: student.id, emailVerified: true },
+      {
+        id: student.id,
+        emailVerified: true,
+        authVersion: student.authVersion || 0,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
@@ -284,6 +288,9 @@ router.post('/login', loginRules, async (req, res) => {
     if (!passwordMatches) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    if (student.accountStatus === 'suspended') {
+      return res.status(403).json({ message: 'This account has been suspended' });
+    }
 
     if (!student.emailVerified || !student.emailVerifiedAt) {
       return res.json({
@@ -294,7 +301,11 @@ router.post('/login', loginRules, async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: student.id, emailVerified: true },
+      {
+        id: student.id,
+        emailVerified: true,
+        authVersion: student.authVersion || 0,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );

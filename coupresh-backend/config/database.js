@@ -7,6 +7,11 @@ const sequelize = new Sequelize(database.name, database.user, database.password,
   host: database.host,
   port: database.port,
   dialect: 'postgres',
+  ...(database.ssl
+    ? { dialectOptions: { ssl: { 
+      require: true,
+      rejectUnauthorized: false } } }
+    : {}),
   logging: false,
 });
 
