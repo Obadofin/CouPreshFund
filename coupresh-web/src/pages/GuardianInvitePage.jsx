@@ -104,9 +104,9 @@ export default function GuardianInvitePage() {
             <>
               <p className="invite-description" role="status">{message}</p>
               <p className="guardian-access-note">
-                Your account is linked. Student profile and dashboard access are not available yet.
+                Your account is linked. Student dashbaord access is granted.
               </p>
-              <Link className="invite-copy guardian-home-link" to="/">Return to CouPreshFund</Link>
+              <Link className="invite-copy guardian-home-link" to="/guardian/dashboard">Return to CouPreshFund</Link>
             </>
           ) : (
             <>
@@ -228,7 +228,7 @@ export default function GuardianInvitePage() {
                 </>
               )}
               <p className="guardian-access-note">
-                Linking confirms your relationship with the student. Student dashboard data access is not available yet.
+                Linking confirms your relationship with the student.
               </p>
             </>
           )}

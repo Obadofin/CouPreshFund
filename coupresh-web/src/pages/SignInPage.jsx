@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import BrandIdentity from '../components/BrandIdentity.jsx'
 
 export default function SignInPage({
@@ -135,8 +135,12 @@ export default function SignInPage({
         <p className="signin-footer">
           Already have an account?{' '}
           <button onClick={() => setMessage('You are already on the sign-in page.')} type="button">
-            Log in
+            Log in as a student
           </button>
+        </p>
+        <p className="signin-footer">
+          Are you a guardian?{' '}
+          <Link className="signin-footer" to="/guardian/dashboard">Login</Link>
         </p>
       </section>
     </main>
