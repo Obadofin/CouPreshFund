@@ -400,7 +400,28 @@ const createAdminRouter = ({
         order: [['createdAt', 'DESC']],
         limit: 500,
       });
-      return res.json({ suppressions });
+      const rows = suppressions.map((item) => (
+        typeof item.get === 'function' ? item.get({ plain: true }) : { ...item }
+      ));
+      const studentIds = [...new Set(rows.map((row) => row.studentId))];
+      const students = studentIds.length
+        ? await StudentModel.findAll({
+          where: { id: { [Op.in]: studentIds } },
+          attributes: ['id', 'fullName', 'email'],
+        })
+        : [];
+      const studentsById = new Map(students.map((student) => [student.id, student]));
+      return res.json({
+        suppressions: rows.map((row) => {
+          const student = studentsById.get(row.studentId);
+          return {
+            ...row,
+            student: student
+              ? { id: student.id, fullName: student.fullName, email: student.email }
+              : null,
+          };
+        }),
+      });
     } catch (error) {
       console.error('Listing campaign suppressions failed:', error.message);
       return res.status(500).json({ message: 'Could not load campaign suppressions' });

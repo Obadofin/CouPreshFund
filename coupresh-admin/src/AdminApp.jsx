@@ -316,50 +316,172 @@ function Milestones({ milestones, action }) {
   )
 }
 
+function StudentSearch({ label, onSelect, selected }) {
+  const [query, setQuery] = useState('')
+  const [options, setOptions] = useState([])
+  const [state, setState] = useState('idle')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const term = query.trim()
+    if (!term) return undefined
+    let active = true
+    const timer = setTimeout(() => {
+      api(`/admin/users?search=${encodeURIComponent(term)}&limit=10`)
+        .then((result) => {
+          if (!active) return
+          setOptions(result.users || [])
+          setState('done')
+        })
+        .catch((requestError) => {
+          if (!active) return
+          setOptions([])
+          setError(requestError.message || 'Could not search students.')
+          setState('error')
+        })
+    }, 300)
+    return () => { active = false; clearTimeout(timer) }
+  }, [query])
+
+  if (selected) {
+    return (
+      <label>{label}
+        <span className="student-chip">
+          <span><strong>{selected.fullName}</strong><small>{selected.email}</small></span>
+          <button className="small-button" onClick={() => onSelect(null)} type="button">Change</button>
+        </span>
+      </label>
+    )
+  }
+
+  return (
+    <label>{label}
+      <input onChange={(event) => {
+        const value = event.target.value
+        setError('')
+        setQuery(value)
+        if (value.trim()) {
+          setState('searching')
+        } else {
+          setOptions([])
+          setState('idle')
+        }
+      }} placeholder="Search by name or email" value={query} />
+      {state === 'searching' && <span className="muted">Searching…</span>}
+      {state === 'error' && <span className="error" role="alert">{error}</span>}
+      {state === 'done' && !options.length && <span className="muted">No matching students.</span>}
+      {!!options.length && (
+        <select onChange={(event) => {
+          const picked = options.find((item) => item.id === event.target.value)
+          if (picked) {
+            onSelect(picked)
+            setQuery('')
+            setOptions([])
+            setState('idle')
+          }
+        }} value="">
+          <option value="">Select a student…</option>
+          {options.map((item) => <option key={item.id} value={item.id}>{item.fullName} · {item.email}</option>)}
+        </select>
+      )}
+    </label>
+  )
+}
+
+function CampaignRow({ campaign, action }) {
+  const [suppressTarget, setSuppressTarget] = useState(null)
+  const [suppressions, setSuppressions] = useState(null)
+  const [listError, setListError] = useState('')
+  const [reload, setReload] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    api(`/admin/campaigns/${campaign.id}/suppressions`)
+      .then((result) => {
+        if (!active) return
+        setSuppressions(result.suppressions || [])
+        setListError('')
+      })
+      .catch((requestError) => {
+        if (!active) return
+        setListError(requestError.message || 'Could not load suppressed students.')
+      })
+    return () => { active = false }
+  }, [campaign.id, reload])
+
+  async function suppress(event) {
+    event.preventDefault()
+    if (!suppressTarget) return
+    if (await action(`/admin/campaigns/${campaign.id}/suppressions`, {
+      method: 'POST',
+      body: JSON.stringify({ studentId: suppressTarget.id }),
+    }, `${suppressTarget.fullName} suppressed from this campaign.`)) {
+      setSuppressTarget(null)
+      setReload((value) => value + 1)
+    }
+  }
+
+  async function restore(suppression) {
+    const name = suppression.student?.fullName || 'Student'
+    if (await action(`/admin/campaigns/${campaign.id}/suppressions/${encodeURIComponent(suppression.studentId)}`, {
+      method: 'DELETE',
+    }, `${name} restored to this campaign.`)) {
+      setReload((value) => value + 1)
+    }
+  }
+
+  return (
+    <article className="campaign-row">
+      <div><strong>{campaign.name}</strong><p>{campaign.isEnabled ? 'Scheduled sends enabled' : 'Paused'} · email + dashboard</p></div>
+      <div className="actions">
+        <button className="small-button" onClick={() => action(`/admin/campaigns/${campaign.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ isEnabled: !campaign.isEnabled }),
+        }, campaign.isEnabled ? 'Campaign paused.' : 'Campaign resumed.')} type="button">
+          {campaign.isEnabled ? 'Pause' : 'Resume'}
+        </button>
+        <button className="small-button" onClick={() => action(`/admin/campaigns/${campaign.id}/run`, {
+          method: 'POST',
+        }, 'Campaign run completed.')} type="button">Run now</button>
+      </div>
+      <form className="suppress-form" onSubmit={suppress}>
+        <StudentSearch
+          label="Suppress a student"
+          onSelect={setSuppressTarget}
+          selected={suppressTarget}
+        />
+        <button className="small-button" disabled={!suppressTarget} type="submit">Suppress</button>
+      </form>
+      <div className="suppression-roster">
+        <p className="roster-title">Suppressed students</p>
+        {listError && <p className="error" role="alert">{listError}</p>}
+        {!listError && suppressions === null && <p className="muted">Loading suppressed students…</p>}
+        {!listError && suppressions?.length === 0 && <p className="muted">No students are suppressed from this campaign.</p>}
+        {!listError && suppressions?.length > 0 && (
+          <ul>
+            {suppressions.map((item) => (
+              <li key={item.id}>
+                <span>
+                  <strong>{item.student?.fullName || 'Unknown student'}</strong>
+                  {item.student?.email ? ` · ${item.student.email}` : ''}
+                  {item.reason ? ` — ${item.reason}` : ''}
+                </span>
+                <button className="small-button" onClick={() => restore(item)} type="button">Restore</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </article>
+  )
+}
+
 function Campaigns({ campaigns, action }) {
-  const [studentIds, setStudentIds] = useState({})
-  const [removeStudentIds, setRemoveStudentIds] = useState({})
   return (
     <section className="panel"><h2>Notification campaigns</h2>
       {!campaigns.length && <p className="muted">No campaigns are configured yet.</p>}
       <div className="item-list">{campaigns.map((campaign) => (
-        <article className="campaign-row" key={campaign.id}>
-          <div><strong>{campaign.name}</strong><p>{campaign.isEnabled ? 'Scheduled sends enabled' : 'Paused'} · email + dashboard</p></div>
-          <div className="actions">
-            <button className="small-button" onClick={() => action(`/admin/campaigns/${campaign.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ isEnabled: !campaign.isEnabled }),
-            }, campaign.isEnabled ? 'Campaign paused.' : 'Campaign resumed.')} type="button">
-              {campaign.isEnabled ? 'Pause' : 'Resume'}
-            </button>
-            <button className="small-button" onClick={() => action(`/admin/campaigns/${campaign.id}/run`, {
-              method: 'POST',
-            }, 'Campaign run completed.')} type="button">Run now</button>
-          </div>
-          <form className="suppress-form" onSubmit={(event) => {
-            event.preventDefault()
-            const studentId = studentIds[campaign.id]
-            if (!studentId) return
-            action(`/admin/campaigns/${campaign.id}/suppressions`, {
-              method: 'POST',
-              body: JSON.stringify({ studentId }),
-            }, 'Student suppressed from this campaign.')
-          }}>
-            <label>Suppress student ID<input onChange={(event) => setStudentIds({ ...studentIds, [campaign.id]: event.target.value })} value={studentIds[campaign.id] || ''} /></label>
-            <button className="small-button" type="submit">Suppress</button>
-          </form>
-          <form className="suppress-form" onSubmit={(event) => {
-            event.preventDefault()
-            const studentId = removeStudentIds[campaign.id]
-            if (!studentId) return
-            action(`/admin/campaigns/${campaign.id}/suppressions/${encodeURIComponent(studentId)}`, {
-              method: 'DELETE',
-            }, 'Student suppression removed.')
-          }}>
-            <label>Restore suppressed student ID<input onChange={(event) => setRemoveStudentIds({ ...removeStudentIds, [campaign.id]: event.target.value })} value={removeStudentIds[campaign.id] || ''} /></label>
-            <button className="small-button" type="submit">Restore</button>
-          </form>
-        </article>
+        <CampaignRow action={action} campaign={campaign} key={campaign.id} />
       ))}</div>
     </section>
   )
