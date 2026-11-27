@@ -2,6 +2,7 @@ const express = require('express');
 const Student = require('../models/Student');
 const StudentProfile = require('../models/StudentProfile');
 const SavingsContribution = require('../models/SavingsContribution');
+const Guardian = require('../models/Guardian');
 const StudentBudget = require('../models/StudentBudget');
 const StudentExpense = require('../models/StudentExpense');
 const StudentLessonProgress = require('../models/StudentLessonProgress');
@@ -66,13 +67,19 @@ const serializeOnboarding = (profile) => (profile ? {
   cadence: profile.cadence,
 } : null);
 
-const serializeContribution = (contribution) => ({
-  id: contribution.id,
-  amount: Number(contribution.amount),
-  note: contribution.note,
-  source: contribution.recordedByGuardianId ? 'guardian_support' : contribution.source,
-  createdAt: contribution.createdAt,
-});
+const serializeContribution = (contribution) => {
+  const guardian = contribution.recordedByGuardian;
+  return {
+    id: contribution.id,
+    amount: Number(contribution.amount),
+    note: contribution.note,
+    source: contribution.recordedByGuardianId ? 'guardian_support' : contribution.source,
+    contributor: guardian
+      ? { type: 'guardian', id: guardian.id, fullName: guardian.fullName }
+      : null,
+    createdAt: contribution.createdAt,
+  };
+};
 
 const getMonthlyEquivalent = (amount, cadence) => {
   if (cadence === 'weekly') {
@@ -304,6 +311,11 @@ const createStudentRouter = ({
         ContributionModel.sum('amount', { where: { studentId: student.id } }),
         ContributionModel.findAll({
           where: { studentId: student.id },
+          include: [{
+            model: Guardian,
+            as: 'recordedByGuardian',
+            attributes: ['id', 'fullName'],
+          }],
           order: [['createdAt', 'DESC']],
           limit: 5,
         }),
@@ -348,6 +360,11 @@ const createStudentRouter = ({
       const limit = req.query.limit ? Number(req.query.limit) : 20;
       const result = await ContributionModel.findAndCountAll({
         where: { studentId: student.id },
+        include: [{
+          model: Guardian,
+          as: 'recordedByGuardian',
+          attributes: ['id', 'fullName'],
+        }],
         order: [['createdAt', 'DESC']],
         limit,
       });

@@ -221,6 +221,7 @@ test('contribution list is scoped to the student, newest-first, and has bounded 
         amount: 2000,
         note: null,
         source: 'self_reported',
+        contributor: null,
         createdAt: new Date('2026-11-01T10:00:00Z').toISOString(),
       }],
       pagination: { total: 2, limit: 1 },
@@ -230,6 +231,31 @@ test('contribution list is scoped to the student, newest-first, and has bounded 
       headers: authHeaders(),
     });
     assert.equal(invalidLimit.status, 400);
+  });
+});
+
+test('guardian-supported contributions expose the contributing guardian', async () => {
+  const entries = [
+    {
+      ...makeContribution('guardian-one', studentId, 3000, '2026-11-03T10:00:00Z', 'Monthly support'),
+      recordedByGuardianId: 'guardian-1',
+      recordedByGuardian: { id: 'guardian-1', fullName: 'Guardian One' },
+    },
+  ];
+  const { app } = createTestApp({ entries });
+
+  await withServer(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/students/me/contributions`, {
+      headers: authHeaders(),
+    });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.contributions[0].source, 'guardian_support');
+    assert.deepEqual(result.contributions[0].contributor, {
+      type: 'guardian',
+      id: 'guardian-1',
+      fullName: 'Guardian One',
+    });
   });
 });
 

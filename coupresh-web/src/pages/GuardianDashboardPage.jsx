@@ -126,6 +126,7 @@ export default function GuardianDashboardPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(hasGuardianAuthToken())
+  const [refreshing, setRefreshing] = useState(false)
 
   async function loadDashboard() {
     const [linkedStudents, guardianRewards] = await Promise.all([
@@ -157,6 +158,52 @@ export default function GuardianDashboardPage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [hasToken])
+
+  useEffect(() => {
+    if (!hasToken) return undefined
+    let active = true
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return
+      Promise.all([getGuardianStudents(), getGuardianRewards()])
+        .then(([linkedStudents, guardianRewards]) => {
+          if (!active) return
+          setStudents(linkedStudents)
+          setRewards(guardianRewards)
+          setError('')
+        })
+        .catch((requestError) => {
+          if (!active) return
+          if (requestError.status === 401 || requestError.status === 403) {
+            clearGuardianAuthToken()
+            setHasToken(false)
+          }
+        })
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      active = false
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [hasToken])
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    setError('')
+    try {
+      await loadDashboard()
+    } catch (requestError) {
+      if (requestError.status === 401 || requestError.status === 403) {
+        clearGuardianAuthToken()
+        setHasToken(false)
+      } else {
+        setError(requestError.message || 'Could not refresh your guardian dashboard.')
+      }
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   async function handleLogin(credentials) {
     await loginGuardian(credentials)
@@ -192,12 +239,25 @@ export default function GuardianDashboardPage() {
       {error && <p className="guardian-dashboard-error" role="alert">{error}</p>}
       {notice && <p className="guardian-dashboard-success" role="status">{notice}</p>}
       <section className="guardian-rewards-summary">
-        <div><p className="guardian-eyebrow">SUPPORT REWARDS</p><strong>{rewards.points} points</strong><span>Points are awarded by the CouPreshFund team.</span></div>
-        {rewards.rewards.length > 0 && (
-          <ul>{rewards.rewards.slice(0, 3).map((reward) => (
-            <li key={reward.id}><span>{reward.reason}</span><strong>+{reward.points}</strong></li>
+        <div>
+          <p className="guardian-eyebrow">SUPPORT REWARDS</p>
+          <strong>{rewards.points} points</strong>
+          <span>Points are awarded by the CouPreshFund team.</span>
+          <button className="guardian-dashboard-secondary guardian-refresh" disabled={refreshing} onClick={handleRefresh} type="button">
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+        {rewards.rewards.length > 0 ? (
+          <ul>{rewards.rewards.map((reward) => (
+            <li key={reward.id}>
+              <span>
+                {reward.reason}
+                <small>{new Date(reward.createdAt).toLocaleDateString('en-NG')}</small>
+              </span>
+              <strong>+{reward.points}</strong>
+            </li>
           ))}</ul>
-        )}
+        ) : <p className="guardian-rewards-empty">No rewards yet. Awards from the CouPreshFund team will appear here.</p>}
       </section>
       {students.length
         ? <section className="guardian-student-list">{students.map((entry) => (

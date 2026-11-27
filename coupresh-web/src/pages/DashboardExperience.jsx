@@ -36,6 +36,18 @@ const navigation = [
   { label: 'Profile', path: '/profile', icon: 'profile' },
 ]
 
+function contributionTitle(contribution) {
+  if (contribution.note) return contribution.note
+  if (contribution.contributor?.fullName) return `${contribution.contributor.fullName} sent support`
+  return contribution.source === 'guardian_support' ? 'Guardian support' : 'Self-reported savings'
+}
+
+function contributionDetail(contribution) {
+  const date = new Date(contribution.createdAt).toLocaleDateString('en-NG')
+  if (contribution.contributor?.fullName) return `${contribution.contributor.fullName} · ${date}`
+  return date
+}
+
 function Icon({ name, size = 22 }) {
   const paths = {
     home: <><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1v-9Z" /></>,
@@ -218,8 +230,8 @@ function HomeScreen({ dashboard, profile, navigate, onOpenNotifications, unreadC
               <ListRow
                 icon="check"
                 key={contribution.id}
-                title={contribution.note || (contribution.source === 'guardian_support' ? 'Guardian support' : 'Self-reported savings')}
-                detail={new Date(contribution.createdAt).toLocaleDateString('en-NG')}
+                title={contributionTitle(contribution)}
+                detail={contributionDetail(contribution)}
                 action={<strong className="positive">+{formatNaira(contribution.amount)}</strong>}
               />
             ))
@@ -467,8 +479,8 @@ function MoneyScreen({
                   <ListRow
                     icon="wallet"
                     key={contribution.id}
-                    title={contribution.note || 'Self-reported savings'}
-                    detail={new Date(contribution.createdAt).toLocaleDateString('en-NG')}
+                    title={contributionTitle(contribution)}
+                    detail={contributionDetail(contribution)}
                     action={<strong className="positive">+{formatNaira(contribution.amount)}</strong>}
                   />
                 ))

@@ -1,96 +1,165 @@
-COUPRESHFUND WEB FRONTEND - WORK SUMMARY
-========================================
+COUPRESHFUND FRONTEND - WORK SUMMARY
+====================================
 
 Project
 -------
-CouPreshFund is a student-focused financial empowerment frontend built with
-React, React Router, and Vite. This summary records the frontend work completed
-through November 1, 2026.
+CouPreshFund is a student financial-empowerment platform. The frontend is split
+into two independent React + Vite applications that share one backend:
+
+1. coupresh-web       - the student and guardian experience (port 5173 in dev).
+2. coupresh-admin     - the platform administration console (port 5174 in dev).
+
+Both apps talk to the CouPreshFund backend API. This summary records the
+frontend work completed through November 27, 2026.
 
 DESIGN AND BRANDING
 -------------------
-- Reviewed the available CoupreshFund logo and added the supplied logo asset
-  to the frontend's public assets.
-- Reworked the welcome/onboarding screen to use the real logo and a more
-  polished branded presentation.
-- Updated the account creation screen to match the supplied design direction.
+- Added the supplied CouPreshFund logo asset to the web app's public assets.
+- Set the CouPreshFund logo as the browser-tab favicon (with an Apple touch
+  icon) for both the web and admin apps, generated as clean small PNG icons.
+- Reworked the welcome/onboarding screen to use the real logo and a polished,
+  branded presentation.
+- Updated account creation to match the supplied design direction.
 - Added a splash screen that leads into the welcome experience.
-- Updated Nigerian currency formatting to use the naira symbol.
+- Nigerian currency is formatted with the naira symbol throughout.
 
-RESPONSIVE DASHBOARD AND PRODUCT SCREENS
-----------------------------------------
-- Reworked the frontend dashboard experience around the supplied product
-  direction and page naming.
-- Added or refreshed these named product views:
-    Home
-    My Money and Graduation Fund
-    Budget Planner
-    Learning Hub
-    Skills & Entrepreneurship
-    Challenge Details
-    My Growth Progress
-    My Future
-    Opportunities
-    Points & Tiers
-    Profile & Settings
-- Added shared dashboard navigation and route-based screen selection.
-- Adjusted desktop layouts to use laptop screen width and multi-column page
-  layouts rather than a narrow, phone-shaped container.
-- Kept mobile layouts single-column and responsive.
-- Corrected large spacing issues in the Learning Hub and Points & Tiers
-  desktop layouts.
-- Preserved interactions such as tabs, budget editing, lesson details,
-  challenge steps, opportunity filters, profile settings, and sign-out.
-
-ACCOUNT AND ONBOARDING FLOW
----------------------------
-- Implemented the welcome, sign-in, account creation, campus details, goal
-  setup, savings plan, and setup-complete screens.
-- Account creation accepts a full name, email and/or phone number, and
-  password.
-- Added frontend validation requiring an email address or phone number.
-- Connected registration and sign-in to the existing backend authentication
-  API, including automatic sign-in after registration.
-- Added user-facing handling for account creation and sign-in errors.
-- Added a profile summary at the end of onboarding.
-
-BACKEND INTEGRATION AND CURRENT DATA STATUS
+STUDENT AND GUARDIAN WEB APP (coupresh-web)
 -------------------------------------------
-- The frontend integrates with registration, login, authenticated student
-  restoration, onboarding persistence, dashboard summary, and contribution
-  endpoints.
-- Authentication tokens are stored in browser local storage and attached to
-  authenticated API requests. The current student and saved onboarding profile
-  are restored after a page reload; dashboard routes require authentication.
-- Onboarding school, graduation goal, purpose, and savings plan are saved when
-  setup is completed.
-- The Home and My Money views load saved goals, contribution totals, progress,
-  and recent self-reported contributions from the backend.
-- Students can record and list self-reported savings. This does not initiate
-  or verify a payment.
-- Budgets, learning progress, opportunities, points, and guardian invitations
-  remain frontend-defined and are not persisted by backend APIs.
-- Removing UI language that called content a demo or preview changed only
-  labels and messages. It did not connect these product screens to live
-  backend data.
+Routes and named product views:
+    /                     Welcome / splash
+    /login                Sign in (students and guardians)
+    /signup/*             Account creation, campus details, goal setup, savings plan
+    /home                 Dashboard home
+    /money/*              My Money and Graduation Fund, Budget Planner
+    /learn                Learning Hub
+    /growth/*             Skills & Entrepreneurship, Challenge details, My Growth
+    /future               My Future, Opportunities
+    /profile              Profile & Settings
+    /goals, /goals/invite Growth unlock and guardian invitation
+    /guardian/invite      Guardian invitation acceptance
+    /guardian/dashboard   Guardian dashboard (separate guardian sign-in)
 
-PROJECT DOCUMENTATION
----------------------
-- Updated coupresh-web/README.md with setup steps, frontend API configuration,
-  connected authentication routes, product-data status, routes, responsive
-  design notes, and lint/build commands.
+Account and onboarding flow:
+- Welcome, sign-in, account creation, campus details, goal setup, savings plan,
+  and setup-complete screens.
+- Account creation accepts full name, email and/or phone number, and password,
+  with frontend validation requiring an email or phone number.
+- Email verification and password recovery flows.
+- Registration and sign-in are wired to the backend authentication API.
+- Onboarding school, graduation goal, purpose, and cadence/contribution are
+  saved to the backend when setup is completed.
+
+Student product features (backend-connected):
+- Dashboard summary: goal, total saved, remaining amount, progress percentage,
+  monthly plan, and recent activity.
+- Record and list self-reported savings contributions (does not move money or
+  verify a payment).
+- Budget planner with period amounts and expense tracking/summary by category.
+- Learning Hub: lesson catalog, lesson detail, saved progress, and completion.
+- Skills & Entrepreneurship: challenges with step progress and projects.
+- Opportunities: filter, view, save, and remove saved opportunities.
+- Points and tiers with point transaction history.
+- Notifications inbox with mark-as-read.
+- Profile and settings, including guardian invitation management.
+
+Contribution attribution (recent):
+- Guardian-recorded contributions now show WHO contributed. The backend attaches
+  the contributing guardian's name to each contribution, and the student's
+  Recent Activity (Home and My Money) displays the guardian's name alongside the
+  amount/date instead of a generic "Guardian support" label.
+
+Guardian experience (separate from the student session):
+- Guardians create/sign in to their own account and accept a student's
+  invitation code to link.
+- Guardian dashboard (/guardian/dashboard) shows linked students' goals, progress,
+  saved totals, and recent contributions.
+- Guardians can record support contributions toward a linked student's goal
+  (recorded, not a real money transfer).
+- Support Rewards: guardians see their total reward points and the reason for
+  each award as entered by the admin, with the award date. The full award
+  history is shown (not just the latest few).
+- Rewards refresh on tab focus/visibility change and via a manual Refresh button
+  (no background polling).
+
+ADMIN DASHBOARD AND AVAILABILITY (coupresh-admin)
+-------------------------------------------------
+The admin console is a separate React/Vite application, not part of the public
+student site. It is available as its own deployment (dist static site) on a
+distinct admin URL, and runs on port 5174 in local development.
+
+- There is no public admin registration page. Admin accounts are provisioned on
+  the backend (e.g. the create-admin script for the first super_admin), and the
+  app authenticates through the backend's admin-only API.
+- Roles are enforced by the backend: super_admin, admin, and content_manager.
+  A content_manager only sees the Learning content and Milestones sections; the
+  frontend hiding of sections is not the access-control boundary.
+
+Admin sections and capabilities:
+- Overview: platform metrics (students, guardians, total savings, dashboard
+  notifications).
+- Users: search/list student accounts and activate/suspend them.
+- Learning content: create lessons and publish/unpublish them.
+- Milestones: create and activate/deactivate platform milestones.
+- Notifications (campaigns): pause/resume scheduled sends, run a campaign now,
+  and manage per-campaign student suppressions.
+- Guardian rewards: award points to a guardian with a reason (shown on the
+  guardian's dashboard).
+- Audit log: recent administrative actions.
+
+Per-campaign suppression (recent):
+- Suppression is identity-based: the admin searches a student by name or email
+  and selects them (no raw student IDs typed in).
+- Each campaign shows a named roster of currently suppressed students (with
+  email and reason) and a Restore action per student.
+- The backend enriches suppression responses with the suppressed student's name
+  and email using a single targeted lookup.
+
+Admin responsiveness (recent):
+- The admin console is mobile friendly: compact top bar with a horizontally
+  scrollable section nav, single-column forms and metrics, full-width action
+  buttons, and a Users table that collapses into labeled cards on phones.
+
+BACKEND INTEGRATION STATUS
+--------------------------
+- Authentication, session restore, onboarding/goal persistence, dashboard,
+  contributions, budgets, expenses, learning progress, challenges/projects,
+  points, opportunities, notifications, and guardian invitations are backed by
+  the API and persisted.
+- Guardian accounts, invitation linking, support contributions, and reward
+  history are backed by the API.
+- Admin analytics, user status, content, milestones, campaigns, suppressions,
+  guardian rewards, and audit log are backed by the admin API.
+- Removing "demo/preview" language reflected the connected state of the app.
+
+RECENT ENHANCEMENTS THIS CYCLE
+------------------------------
+- Admin: identity-based campaign suppression plus a named suppression roster.
+- Student: guardian contributor name shown on contributions.
+- Guardian: full reward history with admin-entered reason and date, plus
+  focus/visibility refresh and a manual Refresh button.
+- Admin: responsive/mobile-friendly layout.
 
 VALIDATION COMPLETED
 --------------------
-- Frontend lint completed successfully with: npm run lint
-- Production frontend build completed successfully with: npm run build
-- Whitespace validation completed successfully with: git diff --check
-- Browser layout checks were performed at desktop and mobile viewport sizes,
-  including the Learning Hub and Points & Tiers pages.
+- coupresh-web:     npm run lint and npm run build completed successfully.
+- coupresh-admin:   npm run lint and npm run build completed successfully.
+- coupresh-backend: test suite run; all feature tests pass. One unrelated,
+  pre-existing CORS test (test/app.test.js "allows the local admin frontend
+  origin by default") fails independently of the frontend work.
+
+RUNNING AND DEPLOYING
+---------------------
+- Web development:   cd coupresh-web; npm run dev (Vite proxy to the backend).
+- Admin development: cd coupresh-admin; npm run dev (port 5174, strict).
+- Both proxy /api to VITE_BACKEND_ORIGIN (default http://localhost:5000).
+- Production: build each app with npm run build and deploy its dist folder
+  separately. Set VITE_API_BASE_URL to the backend HTTPS API base ending in
+  /api/v1, and allow each deployed origin in the backend CORS_ORIGINS.
 
 REMAINING WORK
 --------------
-- Add backend APIs for budgets, learning progress, points, and guardian
-  invitations before wiring those frontend experiences to persistent data.
-- Add automated browser-level coverage for the full registration, onboarding,
-  reload, and savings contribution journey.
+- Add automated browser-level coverage for the full student onboarding,
+  contribution, guardian linking, and admin suppression journeys.
+- Admin Users list has no pagination controls yet even though the API paginates.
+- Real-time (push) reward updates were intentionally not added; refresh happens
+  on focus/visibility and via the manual button.

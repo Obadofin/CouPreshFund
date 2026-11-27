@@ -210,7 +210,7 @@ function Users({ users, action }) {
         <div className="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th /></tr></thead>
           <tbody>{users.map((user) => (
             <tr key={user.id}>
-              <td>{user.fullName}</td><td>{user.email}</td><td><span className={`status ${user.accountStatus}`}>{user.accountStatus}</span></td>
+              <td data-label="Name">{user.fullName}</td><td data-label="Email">{user.email}</td><td data-label="Status"><span className={`status ${user.accountStatus}`}>{user.accountStatus}</span></td>
               <td><button className="small-button" onClick={() => action(`/admin/users/${user.id}/status`, {
                 method: 'PATCH',
                 body: JSON.stringify({ status: user.accountStatus === 'active' ? 'suspended' : 'active' }),

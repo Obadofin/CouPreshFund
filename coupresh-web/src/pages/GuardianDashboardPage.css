@@ -86,6 +86,18 @@
   background: #e6efe9;
 }
 
+.guardian-dashboard-secondary:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.guardian-rewards-summary .guardian-refresh {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
 .guardian-dashboard-header {
   display: flex;
   max-width: 1080px;
@@ -136,10 +148,13 @@
 }
 
 .guardian-rewards-summary ul {
+  flex: 1;
   display: grid;
   gap: 7px;
+  max-height: 200px;
+  overflow-y: auto;
   margin: 0;
-  padding: 0;
+  padding: 0 4px 0 0;
   list-style: none;
 }
 
@@ -148,6 +163,21 @@
   gap: 12px;
   justify-content: space-between;
   font-size: 12px;
+}
+
+.guardian-rewards-summary li span small {
+  display: block;
+  margin-top: 2px;
+  color: #718078;
+  font-size: 11px;
+}
+
+.guardian-rewards-empty {
+  max-width: 46%;
+  margin: 0;
+  color: #718078;
+  font-size: 13px;
+  text-align: right;
 }
 
 .guardian-student-list {
@@ -326,6 +356,10 @@
   .guardian-rewards-summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .guardian-rewards-empty {
+    max-width: 100%;
+    text-align: left;
   }
   .guardian-student-card,
   .guardian-rewards-summary {
